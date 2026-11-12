@@ -5,7 +5,7 @@ INCLUSION PROFESSIONNELLE 15
 Application Streamlit – version initiale opérationnelle et extensible.
 
 Installation :
-    pip install streamlit pandas numpy plotly scikit-learn openpyxl
+    pip install streamlit pandas numpy plotly scikit-learn openpyxl matplotlib
 Lancement :
     streamlit run app_inclusion_professionnelle_15.py
 
@@ -222,6 +222,7 @@ TOMES = [
     ("TOME III", "PROCÉDURES", "Manuel de vérification administrative et opérationnelle"),
     ("TOME IV", "RISQUES & PERFORMANCE", "Analyse de conformité et des résultats"),
     ("TOME V", "DÉPLOIEMENT", "Recommandations et suivi de leur exécution"),
+    ("TOME VI", "VÉRIFICATION PRÉVENTIVE", "Normes professionnelles et inclusion dans les grands projets de l'État"),
 ]
 
 # =============================================================================
@@ -371,7 +372,8 @@ PAGES = [
     "Matrices & questionnaires",
     "Suivi des recommandations",
     "Rapports & exports",
-    "Paramètres & journal"
+    "Paramètres & journal",
+    "TOME VI – Vérification préventive des grands projets"
 ]
 
 with st.sidebar:
@@ -1073,6 +1075,1150 @@ elif page == PAGES[13]:
     - Les conclusions doivent être fondées sur des éléments probants, contradictoires et traçables.
     - L'assistance algorithmique ne remplace pas le jugement et la responsabilité des professionnels.
     """)
+
+
+# =============================================================================
+# 22. TOME VI – VÉRIFICATION PRÉVENTIVE ET RÉFÉRENTIELS INTERNATIONAUX
+# =============================================================================
+# Extension intégrée à l'application IP15. Les constantes ci-dessous proviennent
+# du script Tome VI transmis par l'utilisateur. Les données opérationnelles
+# (projets, contrôles, preuves, risques, anomalies, recommandations) sont saisies
+# par l'utilisateur : aucun projet fictif ni résultat de conformité n'est créé.
+# =============================================================================
+
+T6_CHAPITRES = [{'numero': 1, 'titre': 'Dispositions générales', 'debut': 1, 'fin': 6},
+ {'numero': 2, 'titre': 'Santé, action sociale et prévention', 'debut': 7, 'fin': 14},
+ {'numero': 3, 'titre': 'Éducation, formation professionnelle et emploi', 'debut': 15, 'fin': 30},
+ {'numero': 4,
+  'titre': 'Accessibilité, habitat, cadre de vie, transport, communication et accès à la terre',
+  'debut': 31,
+  'fin': 38},
+ {'numero': 5, 'titre': 'Sports, loisirs, arts et culture', 'debut': 39, 'fin': 42},
+ {'numero': 6, 'titre': 'Organisation des personnes handicapées', 'debut': 43, 'fin': 44},
+ {'numero': 7, 'titre': 'Dispositions transitoires et finales', 'debut': 45, 'fin': 50}]
+
+T6_ETAPES = [['G01',
+  'Identification et cadrage',
+  'Avant la décision de lancement',
+  'Identifier les obligations IP15 potentiellement applicables',
+  'Note de cadrage, fiche projet, analyse des parties prenantes',
+  'Applicabilité juridique documentée'],
+ ['G02',
+  'Maturation et études préalables',
+  'Avant validation des études',
+  "Vérifier l'intégration de l'inclusion dans les études",
+  'Études de faisabilité, études sociales et techniques',
+  'Risques et besoins identifiés'],
+ ['G03',
+  'Programmation et financement',
+  'Avant arbitrage budgétaire',
+  'Vérifier la prise en compte des besoins et coûts pertinents',
+  'Budget, plan de financement, programmation',
+  'Ressources et responsabilités identifiées'],
+ ['G04',
+  'Conception technique',
+  'Avant validation des plans',
+  "Examiner les dispositions d'accessibilité et d'inclusion",
+  'Plans, cahiers techniques et avis spécialisés',
+  'Exigences traduites dans la conception'],
+ ['G05',
+  'Passation des marchés',
+  'Avant publication ou attribution',
+  'Vérifier les exigences dans les dossiers de marché',
+  'DAO, spécifications, critères et contrats',
+  'Exigences pertinentes contractualisées'],
+ ['G06',
+  'Exécution des travaux ou prestations',
+  'Pendant la réalisation',
+  'Contrôler la mise en œuvre des dispositions prévues',
+  'Rapports de chantier, PV, photos et contrôles',
+  'Écarts détectés et corrigés'],
+ ['G07',
+  'Réception et mise en service',
+  'Avant réception ou ouverture au public',
+  "Vérifier la conformité et l'utilisabilité des réalisations",
+  'PV de réception, essais, réserves et visites',
+  'Réserves traitées avant mise en service']]
+
+T6_REFERENTIELS = [{'Organisme': 'INTOSAI',
+  'Référence': 'ISSAI 100',
+  'Intitulé': "Principes fondamentaux de l'audit du secteur public",
+  'Domaine': 'Audit public',
+  'Nature': "Principes d'audit public",
+  'Principes': 'Mandat, indépendance, jugement professionnel, assurance, risques, matérialité, '
+               'éléments probants et rapport.',
+  'Application IP15': 'Structurer la mission, définir les objectifs, les critères, les procédures, '
+                      'les preuves et les conclusions.',
+  'Étapes': 'G01 à G07',
+  'Source': 'S01',
+  'URL': 'https://www.issai.org/'},
+ {'Organisme': 'INTOSAI',
+  'Référence': 'ISSAI 130',
+  'Intitulé': 'Code de déontologie',
+  'Domaine': 'Éthique',
+  'Nature': 'Référentiel déontologique',
+  'Principes': 'Intégrité, indépendance, objectivité, compétence, comportement professionnel et '
+               'confidentialité.',
+  'Application IP15': "Prévenir les conflits d'intérêts et garantir l'impartialité des "
+                      'vérificateurs.',
+  'Étapes': 'G01 à G07',
+  'Source': 'S01',
+  'URL': 'https://www.issai.org/'},
+ {'Organisme': 'INTOSAI',
+  'Référence': 'ISSAI 200',
+  'Intitulé': "Principes de l'audit financier",
+  'Domaine': 'Audit financier',
+  'Nature': "Principes d'audit financier",
+  'Principes': "Risques d'anomalies, matérialité, éléments probants et examen des informations "
+               'financières.',
+  'Application IP15': 'Vérifier la budgétisation des aménagements accessibles, la réalité des '
+                      'dépenses et leur traçabilité.',
+  'Étapes': 'G03, G05, G06, G07',
+  'Source': 'S01',
+  'URL': 'https://www.issai.org/'},
+ {'Organisme': 'INTOSAI',
+  'Référence': 'ISSAI 300',
+  'Intitulé': "Principes de l'audit de performance",
+  'Domaine': 'Performance publique',
+  'Nature': "Principes d'audit de performance",
+  'Principes': 'Économie, efficience et efficacité ; analyse des résultats et de la valeur '
+               "produite par l'action publique.",
+  'Application IP15': 'Évaluer si les investissements produisent des infrastructures et services '
+                      'effectivement accessibles et utilisables.',
+  'Étapes': 'G01 à G07',
+  'Source': 'S01',
+  'URL': 'https://www.issai.org/'},
+ {'Organisme': 'INTOSAI',
+  'Référence': 'ISSAI 400',
+  'Intitulé': "Principes de l'audit de conformité",
+  'Domaine': 'Conformité',
+  'Nature': "Principes d'audit de conformité",
+  'Principes': 'Critères de conformité, objet de contrôle, éléments probants, évaluation des '
+               'écarts et conclusions.',
+  'Application IP15': 'Comparer les obligations pertinentes de la loi n°2010-15 aux décisions, '
+                      'documents et réalisations du projet.',
+  'Étapes': 'G01 à G07',
+  'Source': 'S01',
+  'URL': 'https://www.issai.org/'},
+ {'Organisme': 'INTOSAI',
+  'Référence': 'ISSAI 4000',
+  'Intitulé': "Norme d'audit de conformité",
+  'Domaine': 'Conformité',
+  'Nature': "Norme d'audit de conformité",
+  'Principes': 'Planification, identification des critères, collecte des preuves, évaluation des '
+               'constats et rapport.',
+  'Application IP15': 'Formaliser les tests de conformité IP15 et documenter les conclusions à '
+                      'partir de preuves suffisantes.',
+  'Étapes': 'G01 à G07',
+  'Source': 'S01',
+  'URL': 'https://www.issai.org/'},
+ {'Organisme': 'IIA',
+  'Référence': 'Global Internal Audit Standards 2024',
+  'Intitulé': "Normes mondiales d'audit interne",
+  'Domaine': 'Audit interne',
+  'Nature': 'Normes professionnelles',
+  'Principes': "15 principes organisés en cinq domaines : finalité de l'audit interne, éthique et "
+               'professionnalisme, gouvernance, gestion et réalisation des missions.',
+  'Application IP15': 'Renforcer la planification, la qualité des travaux, la communication des '
+                      'résultats et le suivi des recommandations.',
+  'Étapes': 'G01 à G07',
+  'Source': 'S02',
+  'URL': 'https://www.theiia.org/en/standards/'},
+ {'Organisme': 'ISO',
+  'Référence': 'ISO 19011:2026',
+  'Intitulé': "Lignes directrices pour l'audit des systèmes de management",
+  'Domaine': "Méthodologie d'audit",
+  'Nature': 'Lignes directrices',
+  'Principes': "Principes d'audit, gestion d'un programme d'audit, conduite des audits et "
+               'compétence des auditeurs.',
+  'Application IP15': 'Organiser les programmes de vérification, les équipes, les entretiens, les '
+                      'inspections et les tests.',
+  'Étapes': 'G01 à G07',
+  'Source': 'S03',
+  'URL': 'https://www.iso.org/'},
+ {'Organisme': 'COSO',
+  'Référence': 'Internal Control – Integrated Framework 2013',
+  'Intitulé': 'Cadre intégré de contrôle interne',
+  'Domaine': 'Contrôle interne',
+  'Nature': 'Cadre méthodologique',
+  'Principes': 'Cinq composantes : environnement de contrôle, évaluation des risques, activités de '
+               'contrôle, information et communication, activités de pilotage.',
+  'Application IP15': "Évaluer la gouvernance, les contrôles du maître d'ouvrage et le suivi des "
+                      "exigences d'accessibilité.",
+  'Étapes': 'G01 à G07',
+  'Source': 'S04',
+  'URL': 'https://www.coso.org/'},
+ {'Organisme': 'ISO',
+  'Référence': 'ISO 31000:2018',
+  'Intitulé': 'Management du risque – Lignes directrices',
+  'Domaine': 'Gestion des risques',
+  'Nature': 'Lignes directrices',
+  'Principes': 'Identification, analyse, évaluation, traitement, surveillance et communication des '
+               'risques.',
+  'Application IP15': "Construire la cartographie des risques d'exclusion, d'inaccessibilité, de "
+                      'surcoût et de correction tardive.',
+  'Étapes': 'G01 à G07',
+  'Source': 'S05',
+  'URL': 'https://www.iso.org/standard/65694.html'},
+ {'Organisme': 'ISO',
+  'Référence': 'ISO 37301:2021',
+  'Intitulé': 'Systèmes de management de la conformité',
+  'Domaine': 'Conformité',
+  'Nature': 'Norme de management',
+  'Principes': 'Identification des obligations, responsabilités, maîtrise opérationnelle, '
+               'évaluation et amélioration continue.',
+  'Application IP15': 'Mettre en place une veille des obligations IP15, des contrôles de '
+                      'conformité et des actions correctives.',
+  'Étapes': 'G01 à G07',
+  'Source': 'S06',
+  'URL': 'https://www.iso.org/standard/75080.html'},
+ {'Organisme': 'ISO',
+  'Référence': 'ISO 37000:2021',
+  'Intitulé': 'Gouvernance des organisations',
+  'Domaine': 'Gouvernance',
+  'Nature': 'Lignes directrices',
+  'Principes': 'Gouvernance responsable, finalité organisationnelle, supervision, responsabilité '
+               'et création de valeur.',
+  'Application IP15': "Vérifier la prise en compte de l'inclusion dans les arbitrages du maître "
+                      "d'ouvrage et les mécanismes de supervision.",
+  'Étapes': 'G01, G02, G03, G07',
+  'Source': 'S07',
+  'URL': 'https://www.iso.org/'},
+ {'Organisme': 'ISO',
+  'Référence': 'ISO 37001:2025',
+  'Intitulé': 'Systèmes de management anti-corruption',
+  'Domaine': 'Intégrité',
+  'Nature': 'Norme de management',
+  'Principes': 'Prévention, détection et traitement des risques de corruption ; diligence, '
+               'contrôles et amélioration.',
+  'Application IP15': "Examiner les risques d'intégrité dans la sélection des prestataires, les "
+                      'marchés et les contrôles des prestations.',
+  'Étapes': 'G03, G05, G06',
+  'Source': 'S08',
+  'URL': 'https://www.iso.org/'},
+ {'Organisme': 'PEFA',
+  'Référence': 'Cadre PEFA 2016',
+  'Intitulé': 'Évaluation de la gestion des finances publiques',
+  'Domaine': 'Finances publiques',
+  'Nature': "Cadre d'évaluation",
+  'Principes': 'Sept piliers, 31 indicateurs et 94 dimensions : fiabilité budgétaire, '
+               'transparence, actifs et passifs, exécution, comptabilité, reporting et contrôle '
+               'externe.',
+  'Application IP15': "Examiner la programmation, la traçabilité des crédits, l'exécution "
+                      "budgétaire et le contrôle des dépenses d'inclusion.",
+  'Étapes': 'G03, G05, G06, G07',
+  'Source': 'S09',
+  'URL': 'https://www.pefa.org/'},
+ {'Organisme': 'IPSASB',
+  'Référence': 'Handbook 2025',
+  'Intitulé': 'Normes comptables internationales du secteur public',
+  'Domaine': 'Comptabilité publique',
+  'Nature': 'Référentiel comptable',
+  'Principes': "Normes IPSAS et cadre conceptuel de l'information financière des entités du "
+               'secteur public ; édition couvrant les normes publiées au 31 janvier 2025.',
+  'Application IP15': "Éclairer l'examen de la comptabilisation, de la présentation et du suivi "
+                      'financier des investissements publics.',
+  'Étapes': 'G03, G06, G07',
+  'Source': 'S10',
+  'URL': 'https://www.ipsasb.org/'},
+ {'Organisme': 'UEMOA',
+  'Référence': 'Directive n°01/2009',
+  'Intitulé': 'Code de transparence dans la gestion des finances publiques',
+  'Domaine': 'Finances publiques',
+  'Nature': 'Texte communautaire',
+  'Principes': 'Transparence dans la gestion des finances publiques et information budgétaire.',
+  'Application IP15': "Examiner la transparence de l'information budgétaire et financière du "
+                      "projet, sous réserve de l'applicabilité nationale.",
+  'Étapes': 'G03, G06, G07',
+  'Source': 'S11',
+  'URL': 'https://www.uemoa.int/'},
+ {'Organisme': 'UEMOA',
+  'Référence': 'Directive n°06/2009',
+  'Intitulé': 'Lois de finances',
+  'Domaine': 'Finances publiques',
+  'Nature': 'Texte communautaire',
+  'Principes': "Cadre relatif aux lois de finances et à l'organisation des processus budgétaires.",
+  'Application IP15': "Examiner la programmation, l'autorisation et l'exécution des crédits "
+                      'mobilisés pour le projet.',
+  'Étapes': 'G03, G06',
+  'Source': 'S11',
+  'URL': 'https://www.uemoa.int/'},
+ {'Organisme': 'UEMOA',
+  'Référence': 'Directive n°07/2009',
+  'Intitulé': 'Règlement général sur la comptabilité publique',
+  'Domaine': 'Comptabilité publique',
+  'Nature': 'Texte communautaire',
+  'Principes': 'Règles de comptabilité et de gestion des deniers publics.',
+  'Application IP15': 'Examiner les opérations comptables et les contrôles financiers pertinents '
+                      'pour les dépenses du projet.',
+  'Étapes': 'G03, G06, G07',
+  'Source': 'S11',
+  'URL': 'https://www.uemoa.int/'},
+ {'Organisme': 'Sénégal',
+  'Référence': 'Loi n°2010-15 du 6 juillet 2010',
+  'Intitulé': "Loi d'orientation sociale",
+  'Domaine': 'Inclusion et handicap',
+  'Nature': 'Loi nationale',
+  'Principes': "Loi d'orientation sociale relative à la promotion et à la protection des droits "
+               'des personnes handicapées.',
+  'Application IP15': 'Identifier les articles applicables, les obligations, les acteurs '
+                      'responsables et les critères de vérification.',
+  'Étapes': 'G01 à G07 selon applicabilité',
+  'Source': 'S12',
+  'URL': 'À renseigner depuis le Journal officiel du Sénégal'},
+ {'Organisme': 'Sénégal',
+  'Référence': 'Décret n°2022-2295',
+  'Intitulé': 'Code des marchés publics',
+  'Domaine': 'Commande publique',
+  'Nature': 'Réglementation nationale',
+  'Principes': "Cadre national de passation, d'attribution et d'exécution des marchés publics.",
+  'Application IP15': 'Examiner, selon le régime applicable, la traduction des exigences '
+                      'pertinentes dans les dossiers de consultation et les marchés.',
+  'Étapes': 'G03, G05, G06',
+  'Source': 'S13',
+  'URL': 'À renseigner depuis le Journal officiel du Sénégal'},
+ {'Organisme': 'Sénégal',
+  'Référence': 'Loi n°2021-23',
+  'Intitulé': 'Contrats de partenariat public-privé',
+  'Domaine': 'Partenariats public-privé',
+  'Nature': 'Loi nationale',
+  'Principes': 'Cadre juridique des contrats de partenariat public-privé.',
+  'Application IP15': "Vérifier l'intégration des obligations pertinentes dans le montage "
+                      'contractuel, uniquement si le projet relève du régime PPP.',
+  'Étapes': 'G02, G03, G05, G06',
+  'Source': 'S14',
+  'URL': 'À renseigner depuis le Journal officiel du Sénégal'}]
+
+T6_SOURCES_OFFICIELLES = [['S01', 'INTOSAI', 'https://www.issai.org/'],
+ ['S02', 'IIA', 'https://www.theiia.org/en/standards/'],
+ ['S03', 'ISO', 'https://www.iso.org/'],
+ ['S04', 'COSO', 'https://www.coso.org/'],
+ ['S05', 'ISO 31000', 'https://www.iso.org/standard/65694.html'],
+ ['S06', 'ISO 37301', 'https://www.iso.org/standard/75080.html'],
+ ['S07', 'ISO', 'https://www.iso.org/'],
+ ['S08', 'ISO', 'https://www.iso.org/'],
+ ['S09', 'PEFA', 'https://www.pefa.org/'],
+ ['S10', 'IPSASB', 'https://www.ipsasb.org/'],
+ ['S11', 'UEMOA', 'https://www.uemoa.int/'],
+ ['S12', 'Journal officiel du Sénégal', 'À compléter'],
+ ['S13', 'Journal officiel du Sénégal', 'À compléter'],
+ ['S14', 'Journal officiel du Sénégal', 'À compléter']]
+
+T6_COLONNES_PROJETS = ['Code projet',
+ 'Nom du projet',
+ "Maître d'ouvrage",
+ 'Secteur',
+ 'Localisation',
+ 'Budget prévisionnel FCFA',
+ 'Phase actuelle',
+ 'Date de lancement',
+ 'Responsable',
+ 'Statut IP15',
+ 'Observations']
+
+T6_COLONNES_PREUVES = ['ID preuve',
+ 'Code projet',
+ 'Article IP15',
+ 'Point de contrôle',
+ 'Nature de la preuve',
+ 'Description',
+ 'Source / emplacement',
+ 'Date de collecte',
+ 'Collecté par',
+ 'Fiabilité',
+ 'Statut de validation',
+ 'Observations']
+
+T6_COLONNES_RISQUES = ['ID risque',
+ 'Code projet',
+ 'Article IP15',
+ 'Point de contrôle',
+ 'Risque identifié',
+ 'Cause',
+ 'Conséquence potentielle',
+ 'Probabilité (1-5)',
+ 'Impact (1-5)',
+ 'Criticité',
+ 'Mesure de maîtrise',
+ 'Responsable',
+ 'Échéance',
+ 'Statut']
+
+T6_COLONNES_ANOMALIES = ['ID anomalie',
+ 'Code projet',
+ 'Article IP15',
+ 'Point de contrôle',
+ 'Constat',
+ 'Critère',
+ 'Cause',
+ 'Conséquence',
+ 'Niveau',
+ 'Preuve associée',
+ 'Responsable',
+ 'Échéance',
+ 'Statut',
+ 'Observation']
+
+T6_COLONNES_RECOMMANDATIONS = ['ID recommandation',
+ 'Code projet',
+ 'Article IP15',
+ 'Anomalie associée',
+ 'Recommandation',
+ 'Responsable',
+ 'Échéance',
+ 'Indicateur de réalisation',
+ 'Statut',
+ 'Preuve de clôture',
+ 'Validation du vérificateur']
+
+T6_COLONNES_GATES = ['Code',
+ 'Étape du projet',
+ 'Moment du contrôle',
+ 'Objectif de vérification',
+ 'Documents et preuves attendus',
+ 'Résultat attendu',
+ 'Projet concerné',
+ 'Date du contrôle',
+ 'Vérificateur',
+ 'Conclusion',
+ 'Observations']
+
+T6_LISTES = {'Applicabilite': ['Applicable', 'Non applicable', 'À examiner'],
+ 'Statut_verification': ['Non évalué',
+                         'En cours',
+                         'Conforme',
+                         'Conforme avec réserve',
+                         'Non conforme',
+                         'Insuffisance documentaire',
+                         'Non applicable'],
+ 'Conclusion': ['Avis favorable',
+                'Avis favorable avec réserves',
+                'Alerte préventive majeure',
+                'À approfondir'],
+ 'Niveau_risque': ['Faible', 'Modéré', 'Élevé', 'Critique'],
+ 'Fiabilite': ['Faible', 'Moyenne', 'Élevée'],
+ 'Statut_recommandation': ['Non démarrée',
+                           'En cours',
+                           'Mise en œuvre',
+                           'À vérifier',
+                           'Clôturée',
+                           'En retard'],
+ 'Probabilite_impact': [1, 2, 3, 4, 5]}
+
+T6_PAGE = "TOME VI – Vérification préventive des grands projets"
+
+T6_COLONNES_ARTICLES = [
+    "Code article", "Article", "Chapitre", "Intitulé du chapitre",
+    "Indicateur Tome II", "Libellé indicateur", "Texte de la loi (source Tome I)",
+    "Applicabilité au projet", "Justification de l'applicabilité",
+    "Statut de vérification", "Critère / procédure", "Référence de preuve",
+    "Observations", "Responsable", "Date de mise à jour"
+]
+
+T6_COLONNES_MAPPING = [
+    "Organisme", "Référentiel", "Nature", "Point de contrôle",
+    "Étape du projet", "Application opérationnelle", "Réserve méthodologique"
+]
+
+T6_COLONNES_PLAN = [
+    "Point de contrôle", "Étape du projet", "Moment du contrôle",
+    "Code article", "Article", "Indicateur Tome II", "Objectif du test",
+    "Procédure de vérification", "Preuve attendue", "Résultat", "Observations"
+]
+
+T6_STATUTS_APPLICABILITE = ["À examiner", "Applicable", "Non applicable (motivé)", "Applicabilité conditionnelle"]
+T6_STATUTS_VERIFICATION = [
+    "Non évalué", "En cours", "Conforme", "Conforme avec réserve",
+    "Non conforme", "Insuffisance documentaire", "Non applicable"
+]
+T6_STATUTS_CONCLUSION = [
+    "Avis favorable", "Avis favorable avec réserves",
+    "Alerte préventive majeure", "À approfondir"
+]
+T6_STATUTS_SUIVI = ["Non démarrée", "En cours", "Mise en œuvre", "À vérifier", "Clôturée", "En retard"]
+
+def t6_init_db():
+    with db() as con:
+        con.executescript("""
+        CREATE TABLE IF NOT EXISTS t6_projects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code_projet TEXT UNIQUE NOT NULL, nom_projet TEXT NOT NULL,
+            maitre_ouvrage TEXT, secteur TEXT, localisation TEXT,
+            budget_fcfa REAL, phase_actuelle TEXT, date_lancement TEXT,
+            responsable TEXT, statut_ip15 TEXT, observations TEXT,
+            created_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS t6_article_reviews (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, code_projet TEXT NOT NULL,
+            article INTEGER NOT NULL, applicabilite TEXT, justification TEXT,
+            statut TEXT, critere TEXT, preuve TEXT, observations TEXT,
+            responsable TEXT, date_maj TEXT
+        );
+        CREATE TABLE IF NOT EXISTS t6_gate_checks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, code_projet TEXT NOT NULL,
+            gate_code TEXT NOT NULL, date_controle TEXT, verificateur TEXT,
+            conclusion TEXT, observations TEXT, date_creation TEXT
+        );
+        CREATE TABLE IF NOT EXISTS t6_evidence (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, id_preuve TEXT,
+            code_projet TEXT NOT NULL, article TEXT, point_controle TEXT,
+            nature TEXT, description TEXT, source_emplacement TEXT,
+            date_collecte TEXT, collecteur TEXT, fiabilite TEXT,
+            statut_validation TEXT, observations TEXT, date_creation TEXT
+        );
+        CREATE TABLE IF NOT EXISTS t6_risks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, id_risque TEXT,
+            code_projet TEXT NOT NULL, article TEXT, point_controle TEXT,
+            risque TEXT, cause TEXT, consequence TEXT, probabilite INTEGER,
+            impact INTEGER, criticite INTEGER, niveau TEXT,
+            mesure_maitrise TEXT, responsable TEXT, echeance TEXT,
+            statut TEXT, date_creation TEXT
+        );
+        CREATE TABLE IF NOT EXISTS t6_anomalies (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, id_anomalie TEXT,
+            code_projet TEXT NOT NULL, article TEXT, point_controle TEXT,
+            constat TEXT, critere TEXT, cause TEXT, consequence TEXT,
+            niveau TEXT, preuve_associee TEXT, responsable TEXT,
+            echeance TEXT, statut TEXT, observation TEXT, date_creation TEXT
+        );
+        CREATE TABLE IF NOT EXISTS t6_recommendations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, id_recommandation TEXT,
+            code_projet TEXT NOT NULL, article TEXT, anomalie_associee TEXT,
+            recommandation TEXT, responsable TEXT, echeance TEXT,
+            indicateur_realisation TEXT, statut TEXT, preuve_cloture TEXT,
+            validation_verificateur TEXT, date_creation TEXT
+        );
+        """)
+t6_init_db()
+
+def t6_df(query, params=()):
+    return qdf(query, params)
+
+def t6_projects_df():
+    return t6_df("SELECT * FROM t6_projects ORDER BY id DESC")
+
+def t6_project_choices():
+    projects = t6_projects_df()
+    if projects.empty:
+        return {}
+    return {
+        f"{r.code_projet} · {r.nom_projet}": r.code_projet
+        for r in projects.itertuples()
+    }
+
+def t6_articles_df():
+    rows = []
+    for chapter in T6_CHAPITRES:
+        for article in range(chapter["debut"], chapter["fin"] + 1):
+            indicator = INDICATOR_DF[INDICATOR_DF["Article"] == article]
+            indicator_code = indicator.iloc[0]["Code"] if not indicator.empty else f"IP15-{article:02d}"
+            indicator_label = indicator.iloc[0]["Indicateur"] if not indicator.empty else ""
+            rows.append({
+                "Code article": f"IP15-ART-{article:03d}",
+                "Article": article,
+                "Chapitre": chapter["numero"],
+                "Intitulé du chapitre": chapter["titre"],
+                "Indicateur Tome II": indicator_code,
+                "Libellé indicateur": indicator_label,
+                "Texte de la loi (source Tome I)": "À renseigner depuis le texte officiel et le Tome I ; ne pas reconstituer le texte de loi par approximation.",
+            })
+    return pd.DataFrame(rows)
+
+def t6_mapping_df():
+    rows = []
+    for ref in T6_REFERENTIELS:
+        for gate in T6_ETAPES:
+            stages = ref["Étapes"]
+            if gate[0] in stages or stages in ("G01 à G07", "G01 à G07 selon applicabilité"):
+                rows.append([
+                    ref["Organisme"], ref["Référence"], ref["Nature"], gate[0],
+                    gate[1], ref["Application IP15"],
+                    "Correspondance méthodologique à confirmer selon le mandat"
+                ])
+    return pd.DataFrame(rows, columns=T6_COLONNES_MAPPING)
+
+def t6_plan_df():
+    rows = []
+    for gate in T6_ETAPES:
+        for article in range(1, 51):
+            rows.append([
+                gate[0], gate[1], gate[2], f"IP15-ART-{article:03d}", article,
+                f"IP15-{article:02d}", "À définir à partir du Tome II",
+                "À définir selon l'applicabilité", "À documenter",
+                "Non évalué", ""
+            ])
+    return pd.DataFrame(rows, columns=T6_COLONNES_PLAN)
+
+def t6_risk_level(score):
+    if score >= 20: return "Critique"
+    if score >= 15: return "Élevé"
+    if score >= 8: return "Modéré"
+    return "Faible"
+
+def t6_export_workbook():
+    projects = t6_projects_df()
+    article_df = t6_articles_df()
+    reviews = t6_df("SELECT * FROM t6_article_reviews ORDER BY code_projet, article")
+    gates = t6_df("SELECT * FROM t6_gate_checks ORDER BY code_projet, gate_code")
+    evidence = t6_df("SELECT * FROM t6_evidence ORDER BY id")
+    risks = t6_df("SELECT * FROM t6_risks ORDER BY id")
+    anomalies = t6_df("SELECT * FROM t6_anomalies ORDER BY id")
+    recommendations = t6_df("SELECT * FROM t6_recommendations ORDER BY id")
+    refs = pd.DataFrame(T6_REFERENTIELS)
+    mapping = t6_mapping_df()
+    plan = t6_plan_df()
+    sources = pd.DataFrame(T6_SOURCES_OFFICIELLES, columns=["Code", "Organisme", "Adresse officielle"])
+    gates_ref = pd.DataFrame(T6_ETAPES, columns=[
+        "Code", "Étape du projet", "Moment du contrôle", "Objectif de vérification",
+        "Documents et preuves attendus", "Résultat attendu"
+    ])
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        pd.DataFrame([
+            ["Objet", "Guide de vérification préventive de l'inclusion des personnes handicapées dans les grands projets de l'État"],
+            ["Référence juridique centrale", LEGAL_REFERENCE],
+            ["Architecture", "50 articles, 7 chapitres et 7 points de contrôle G01 à G07"],
+            ["Référentiels", f"{len(T6_REFERENTIELS)} référentiels professionnels, internationaux et nationaux"],
+            ["Principe", "Les normes internationales éclairent la méthode et ne remplacent pas le droit national."],
+            ["Précaution", "Aucune conformité n'est présumée ; les éditions et versions des référentiels doivent être vérifiées."],
+            ["Date de génération", datetime.now().strftime("%d/%m/%Y %H:%M")]
+        ], columns=["Rubrique", "Description"]).to_excel(writer, index=False, sheet_name="Présentation")
+        pd.DataFrame([
+            ["Projets enregistrés", len(projects)],
+            ["Articles évalués", len(reviews)],
+            ["Contrôles préventifs documentés", len(gates)],
+            ["Preuves collectées", len(evidence)],
+            ["Risques enregistrés", len(risks)],
+            ["Anomalies enregistrées", len(anomalies)],
+            ["Recommandations enregistrées", len(recommendations)],
+            ["Recommandations clôturées", int((recommendations["statut"] == "Clôturée").sum()) if not recommendations.empty else 0],
+        ], columns=["Indicateur", "Valeur"]).to_excel(writer, index=False, sheet_name="Tableau de bord")
+        exports = [
+            ("Portefeuille projets", projects), ("Matrice IP15", article_df),
+            ("Revues articles", reviews), ("Contrôles préventifs", gates),
+            ("Plan de vérification", plan), ("Référentiels", refs),
+            ("Mapping normes étapes", mapping), ("Sources officielles", sources),
+            ("Registre preuves", evidence), ("Registre risques", risks),
+            ("Anomalies", anomalies), ("Recommandations", recommendations),
+            ("Étapes G01-G07", gates_ref)
+        ]
+        for name, frame in exports:
+            frame.to_excel(writer, index=False, sheet_name=name[:31])
+        for ws in writer.book.worksheets:
+            ws.freeze_panes = "A2"
+            ws.sheet_view.showGridLines = False
+            for cell in ws[1]:
+                cell.font = __import__("openpyxl").styles.Font(bold=True, color="FFFFFF")
+                cell.fill = __import__("openpyxl").styles.PatternFill("solid", fgColor="10243A")
+                cell.alignment = __import__("openpyxl").styles.Alignment(wrap_text=True, vertical="center")
+            for col in ws.columns:
+                letter = col[0].column_letter
+                max_len = max((len(str(c.value)) for c in col if c.value is not None), default=10)
+                ws.column_dimensions[letter].width = min(max(max_len + 2, 14), 48)
+        from openpyxl.chart import BarChart, Reference
+        chart_data = writer.book.create_sheet("Données graphiques")
+        chart_data.append(["Chapitre", "Nombre d'articles"])
+        for chapter in T6_CHAPITRES:
+            chart_data.append([chapter["titre"], chapter["fin"] - chapter["debut"] + 1])
+        chart = BarChart()
+        chart.type = "bar"
+        chart.style = 10
+        chart.title = "Répartition des articles IP15 par chapitre"
+        chart.y_axis.title = "Chapitre"
+        chart.x_axis.title = "Nombre d'articles"
+        chart.height = 9
+        chart.width = 18
+        chart.add_data(Reference(chart_data, min_col=2, min_row=1, max_row=8), titles_from_data=True)
+        chart.set_categories(Reference(chart_data, min_col=1, min_row=2, max_row=8))
+        writer.book["Tableau de bord"].add_chart(chart, "D2")
+        chart_data.sheet_state = "hidden"
+        from openpyxl.worksheet.datavalidation import DataValidation
+        validations = [
+            ("Revues articles", "D", "À examiner,Applicable,Non applicable (motivé),Applicabilité conditionnelle"),
+            ("Revues articles", "F", "Non évalué,En cours,Conforme,Conforme avec réserve,Non conforme,Insuffisance documentaire,Non applicable"),
+            ("Contrôles préventifs", "F", "Avis favorable,Avis favorable avec réserves,Alerte préventive majeure,À approfondir"),
+            ("Registre preuves", "K", "Faible,Moyenne,Élevée"),
+            ("Registre risques", "I", "1,2,3,4,5"),
+            ("Registre risques", "J", "1,2,3,4,5"),
+            ("Anomalies", "J", "Faible,Modéré,Élevé,Critique"),
+            ("Recommandations", "J", "Non démarrée,En cours,Mise en œuvre,À vérifier,Clôturée,En retard"),
+        ]
+        for sheet_name, column, options in validations:
+            dv = DataValidation(type="list", formula1=f'"{options}"', allow_blank=True)
+            dv.error = "Choisissez une valeur proposée dans la liste."
+            writer.book[sheet_name].add_data_validation(dv)
+            dv.add(f"{column}2:{column}501")
+    return buffer.getvalue()
+
+def t6_export_csv_zip():
+    import zipfile
+    frames = {
+        "portefeuille_projets": t6_projects_df(),
+        "matrice_50_articles": t6_articles_df(),
+        "revues_articles": t6_df("SELECT * FROM t6_article_reviews"),
+        "controles_preventifs": t6_df("SELECT * FROM t6_gate_checks"),
+        "plan_verification": t6_plan_df(),
+        "referentiels": pd.DataFrame(T6_REFERENTIELS),
+        "mapping_normes_etapes": t6_mapping_df(),
+        "sources_officielles": pd.DataFrame(T6_SOURCES_OFFICIELLES, columns=["Code","Organisme","Adresse officielle"]),
+        "preuves": t6_df("SELECT * FROM t6_evidence"),
+        "risques": t6_df("SELECT * FROM t6_risks"),
+        "anomalies": t6_df("SELECT * FROM t6_anomalies"),
+        "recommandations": t6_df("SELECT * FROM t6_recommendations"),
+    }
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name, frame in frames.items():
+            zf.writestr(f"{name}.csv", frame.to_csv(index=False, encoding="utf-8-sig"))
+    return buffer.getvalue()
+
+def t6_export_png_zip():
+    """Génère quatre graphiques PNG haute résolution à partir du référentiel et des données saisies."""
+    import zipfile
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Patch
+    output = io.BytesIO()
+    refs = pd.DataFrame(T6_REFERENTIELS)
+    chapters = pd.DataFrame([
+        {"Chapitre": f"Chapitre {x['numero']} – {x['titre']}", "Articles": x["fin"]-x["debut"]+1}
+        for x in T6_CHAPITRES
+    ])
+    gates = pd.DataFrame(T6_ETAPES, columns=["Code","Étape","Moment","Objectif","Preuves","Résultat"])
+    colors = ["#10243A", "#245B83", "#239B91", "#C9A227", "#667085", "#27864B", "#7B5AA6"]
+    images = {}
+    # 1. Cycle G01-G07
+    fig, ax = plt.subplots(figsize=(16, 5))
+    xs = np.arange(len(gates))
+    ax.plot(xs, np.ones(len(xs)), color="#245B83", marker="o", linewidth=3, markersize=13)
+    for i, row in gates.iterrows():
+        ax.text(i, 1.06, row["Code"], ha="center", va="bottom", fontweight="bold", color="#10243A")
+        ax.text(i, .94, row["Étape"], ha="center", va="top", fontsize=8, wrap=True, color="#10243A")
+    ax.set_title("Cycle des sept points de contrôle préventif IP15", color="#10243A", pad=24)
+    ax.set_xlim(-.4, 6.4); ax.set_ylim(.75, 1.25); ax.axis("off")
+    fig.tight_layout(); buf=io.BytesIO(); fig.savefig(buf,format="png",dpi=300,bbox_inches="tight"); plt.close(fig)
+    images["01_cycle_verification_preventive.png"] = buf.getvalue()
+    # 2. Répartition des articles
+    fig, ax = plt.subplots(figsize=(14, 7))
+    ax.barh(chapters["Chapitre"], chapters["Articles"], color="#245B83")
+    ax.set_title("Répartition des 50 articles de la loi n°2010-15 par chapitre", color="#10243A")
+    ax.set_xlabel("Nombre d'articles"); ax.grid(axis="x",alpha=.2); fig.tight_layout()
+    buf=io.BytesIO(); fig.savefig(buf,format="png",dpi=300,bbox_inches="tight"); plt.close(fig)
+    images["02_repartition_50_articles.png"] = buf.getvalue()
+    # 3. Cartographie des référentiels par domaine
+    domain_counts = refs.groupby("Domaine").size().sort_values()
+    fig, ax = plt.subplots(figsize=(14, 8))
+    ax.barh(domain_counts.index, domain_counts.values, color="#239B91")
+    ax.set_title("Cartographie des référentiels professionnels et internationaux", color="#10243A")
+    ax.set_xlabel("Nombre de références"); ax.grid(axis="x",alpha=.2); fig.tight_layout()
+    buf=io.BytesIO(); fig.savefig(buf,format="png",dpi=300,bbox_inches="tight"); plt.close(fig)
+    images["03_cartographie_referentiels.png"] = buf.getvalue()
+    # 4. Chaîne de traçabilité
+    labels = ["Obligations", "Contrôles", "Preuves", "Risques / constats", "Recommandations", "Clôture"]
+    fig, ax = plt.subplots(figsize=(15, 4))
+    x = np.arange(len(labels))
+    ax.plot(x, np.ones(len(x)), color="#10243A", linewidth=3, marker="o", markersize=13)
+    for i, label in enumerate(labels):
+        ax.text(i, 1.07, label, ha="center", va="bottom", fontsize=9, color="#10243A")
+    ax.set_title("Chaîne de traçabilité et de responsabilisation IP15", color="#10243A", pad=24)
+    ax.set_xlim(-.4, 5.4); ax.set_ylim(.85, 1.25); ax.axis("off")
+    fig.tight_layout(); buf=io.BytesIO(); fig.savefig(buf,format="png",dpi=300,bbox_inches="tight"); plt.close(fig)
+    images["04_chaine_tracabilite.png"] = buf.getvalue()
+    with zipfile.ZipFile(output,"w",zipfile.ZIP_DEFLATED) as zf:
+        for name, content in images.items():
+            zf.writestr(name,content)
+    return output.getvalue()
+
+def t6_charts():
+    projects = t6_projects_df()
+    reviews = t6_df("SELECT * FROM t6_article_reviews")
+    risks = t6_df("SELECT * FROM t6_risks")
+    gates = t6_df("SELECT * FROM t6_gate_checks")
+    refs = pd.DataFrame(T6_REFERENTIELS)
+    st.markdown("#### Visualisations du dispositif préventif")
+    if PLOTLY_OK:
+        stages = pd.DataFrame(T6_ETAPES, columns=["Code","Étape","Moment","Objectif","Preuves","Résultat"])
+        fig = px.scatter(stages, x=list(range(1, 8)), y=[1]*7, text="Code",
+                         hover_name="Étape", title="Cycle des sept points de contrôle préventif IP15")
+        fig.update_traces(marker=dict(size=18, color=C["teal"]), textposition="top center")
+        fig.update_yaxes(visible=False)
+        fig.update_xaxes(title="Progression du cycle projet", tickvals=list(range(1,8)), ticktext=stages["Code"])
+        fig.update_layout(height=300, showlegend=False)
+        st.plotly_chart(fig, use_container_width=True)
+        chapter_counts = pd.DataFrame([
+            {"Chapitre": f"Chapitre {x['numero']} – {x['titre']}",
+             "Articles": x["fin"]-x["debut"]+1} for x in T6_CHAPITRES
+        ])
+        st.plotly_chart(px.bar(chapter_counts, x="Chapitre", y="Articles",
+                               title="Répartition des 50 articles par chapitre",
+                               color_discrete_sequence=[C["blue"]]), use_container_width=True)
+        domain_counts = refs.groupby("Domaine", as_index=False).size().rename(columns={"size":"Référentiels"})
+        st.plotly_chart(px.bar(domain_counts, x="Référentiels", y="Domaine", orientation="h",
+                               title="Référentiels par domaine",
+                               color_discrete_sequence=[C["teal"]]), use_container_width=True)
+        chain = pd.DataFrame({"Étape":["Obligations","Contrôles","Preuves","Risques / constats","Recommandations","Clôture"],
+                              "Ordre":[1,2,3,4,5,6]})
+        fig_chain = px.line(chain, x="Ordre", y=[1]*6, text="Étape",
+                            title="Chaîne de traçabilité et de responsabilisation")
+        fig_chain.update_traces(mode="markers+lines+text", marker=dict(size=14, color=C["gold"]),
+                                textposition="top center", line=dict(color=C["navy"], width=3))
+        fig_chain.update_yaxes(visible=False)
+        fig_chain.update_xaxes(visible=False)
+        fig_chain.update_layout(height=300, showlegend=False)
+        st.plotly_chart(fig_chain, use_container_width=True)
+    else:
+        st.info("Plotly n'est pas installé. Les tableaux restent disponibles ; installez plotly pour activer les graphiques interactifs.")
+        st.bar_chart(pd.DataFrame({"Articles":[x["fin"]-x["debut"]+1 for x in T6_CHAPITRES]},
+                                  index=[x["titre"] for x in T6_CHAPITRES]))
+    if not gates.empty:
+        st.markdown("**Contrôles renseignés par étape**")
+        counts = gates.groupby("gate_code").size().reindex([x[0] for x in T6_ETAPES], fill_value=0)
+        st.bar_chart(counts)
+    if not risks.empty:
+        st.markdown("**Répartition des risques enregistrés**")
+        st.bar_chart(risks["niveau"].value_counts())
+    if not reviews.empty:
+        st.markdown("**Statuts des vérifications des articles**")
+        st.bar_chart(reviews["statut"].value_counts())
+
+def t6_render_page():
+    page_header(
+        "TOME VI – VÉRIFICATION PRÉVENTIVE IP15",
+        "Normes professionnelles et référentiels internationaux · Inclusion des personnes handicapées dans les grands projets de l'État"
+    )
+    projects = t6_projects_df()
+    evidence = t6_df("SELECT * FROM t6_evidence")
+    risks = t6_df("SELECT * FROM t6_risks")
+    anomalies = t6_df("SELECT * FROM t6_anomalies")
+    recommendations = t6_df("SELECT * FROM t6_recommendations")
+    reviews = t6_df("SELECT * FROM t6_article_reviews")
+    gates = t6_df("SELECT * FROM t6_gate_checks")
+    metric_row([
+        ("Projets enregistrés", len(projects), "Aucun projet n'est préchargé."),
+        ("Articles évalués", len(reviews), "Revues article/projet enregistrées."),
+        ("Contrôles G01-G07", len(gates), "Contrôles préventifs documentés."),
+        ("Preuves collectées", len(evidence), "Éléments probants enregistrés."),
+        ("Risques", len(risks), "Risques enregistrés."),
+        ("Anomalies", len(anomalies), "Constats enregistrés."),
+    ])
+    st.markdown(
+        '<div class="ip15-note"><b>Règle de prudence :</b> les référentiels internationaux sont des appuis méthodologiques. '
+        'Ils ne remplacent pas les obligations du droit sénégalais. L’applicabilité doit être motivée projet par projet ; '
+        'une absence de pièce ne constitue pas automatiquement une non-conformité.</div>',
+        unsafe_allow_html=True
+    )
+    tabs = st.tabs([
+        "Tableau de bord", "Projets", "50 articles IP15", "Contrôles G01-G07",
+        "Référentiels & mapping", "Preuves", "Risques", "Anomalies",
+        "Recommandations", "Exports"
+    ])
+
+    with tabs[0]:
+        t6_charts()
+        st.markdown("#### Synthèse des référentiels intégrés")
+        st.dataframe(pd.DataFrame(T6_REFERENTIELS)[["Organisme","Référence","Domaine","Étapes"]],
+                     use_container_width=True, hide_index=True)
+        st.caption("Les éditions et versions doivent être confirmées à la date de chaque mission.")
+
+    with tabs[1]:
+        st.markdown("#### Enregistrer un projet réel")
+        with st.form("t6_project_form", clear_on_submit=True):
+            c1,c2,c3 = st.columns(3)
+            code = c1.text_input("Code projet *", placeholder="Ex. PROJ-2027-001")
+            name = c2.text_input("Nom du projet *")
+            owner = c3.text_input("Maître d'ouvrage")
+            sector = c1.selectbox("Secteur", ["Infrastructures","Éducation","Santé","Transport","Habitat","Énergie","Eau et assainissement","Numérique","Sports et culture","Autre"])
+            location = c2.text_input("Localisation")
+            budget = c3.number_input("Budget prévisionnel (FCFA)", min_value=0.0, step=1000000.0)
+            phase = c1.selectbox("Phase actuelle", [x[1] for x in T6_ETAPES])
+            start_date = c2.date_input("Date de lancement", value=None)
+            manager = c3.text_input("Responsable du projet")
+            project_status = st.selectbox("Statut IP15", ["Non évalué","À instruire","En vérification","Avec réserves","Alerte préventive","Clôturé"])
+            obs = st.text_area("Observations")
+            submitted = st.form_submit_button("Enregistrer le projet", type="primary")
+            if submitted:
+                if not code.strip() or not name.strip():
+                    st.error("Le code et le nom du projet sont obligatoires.")
+                else:
+                    try:
+                        execute("""INSERT INTO t6_projects(code_projet,nom_projet,maitre_ouvrage,secteur,localisation,
+                            budget_fcfa,phase_actuelle,date_lancement,responsable,statut_ip15,observations,created_at)
+                            VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+                            (code.strip(),name.strip(),owner,sector,location,budget,phase,
+                             start_date.isoformat() if start_date else "",manager,project_status,obs,
+                             datetime.now().isoformat(timespec="seconds")))
+                        log_action("Création","Tome VI – projet",f"{code} · {name}")
+                        st.success("Projet enregistré.")
+                        st.rerun()
+                    except sqlite3.IntegrityError:
+                        st.error("Ce code projet existe déjà.")
+        if not projects.empty:
+            st.dataframe(projects, use_container_width=True, hide_index=True)
+            csv_download(projects, "tome6_portefeuille_projets.csv", "Exporter le portefeuille")
+        else:
+            st.info("Aucun projet n'est enregistré. Saisissez uniquement des projets réels.")
+
+    with tabs[2]:
+        st.markdown("#### Matrice de traçabilité des 50 articles")
+        base_articles = t6_articles_df()
+        project_map = t6_project_choices()
+        if not project_map:
+            st.warning("Enregistrez d'abord un projet pour documenter son applicabilité.")
+        else:
+            selected_project_label = st.selectbox("Projet concerné", list(project_map), key="t6_article_project")
+            selected_project = project_map[selected_project_label]
+            with st.form("t6_article_review_form", clear_on_submit=True):
+                c1,c2,c3 = st.columns(3)
+                article_no = c1.selectbox("Article", list(range(1,51)))
+                app_status = c2.selectbox("Applicabilité", T6_STATUTS_APPLICABILITE)
+                verify_status = c3.selectbox("Statut de vérification", T6_STATUTS_VERIFICATION)
+                justification = st.text_area("Justification de l'applicabilité")
+                criterion = st.text_area("Critère / procédure de vérification")
+                proof_ref = st.text_input("Référence de preuve")
+                reviewer = st.text_input("Responsable / vérificateur")
+                comments = st.text_area("Observations")
+                if st.form_submit_button("Enregistrer la revue de l'article"):
+                    execute("""INSERT INTO t6_article_reviews(code_projet,article,applicabilite,justification,
+                        statut,critere,preuve,observations,responsable,date_maj)
+                        VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                        (selected_project,article_no,app_status,justification,verify_status,
+                         criterion,proof_ref,comments,reviewer,datetime.now().isoformat(timespec="seconds")))
+                    log_action("Création","Tome VI – revue article",f"{selected_project} · Article {article_no}")
+                    st.success("Revue enregistrée.")
+                    st.rerun()
+            current = t6_df("SELECT * FROM t6_article_reviews WHERE code_projet=? ORDER BY article,id DESC",(selected_project,))
+            if not current.empty:
+                latest = current.drop_duplicates("article", keep="first")
+                base_articles = base_articles.merge(latest[["article","applicabilite","justification","statut","critere","preuve","observations","responsable","date_maj"]],
+                    left_on="Article",right_on="article",how="left").drop(columns=["article"])
+            st.dataframe(base_articles, use_container_width=True, hide_index=True)
+            csv_download(base_articles, f"{selected_project}_matrice_50_articles.csv", "Exporter la matrice du projet")
+        with st.expander("Texte intégral de l'article sélectionné"):
+            n = st.selectbox("Article à consulter", list(range(1,51)), key="t6_article_text")
+            st.info("Le texte intégral de cet article n’est pas présent dans la version de base du script. Joignez ou renseignez la version officielle dans la bibliothèque juridique / Tome I avant de conclure.")
+
+    with tabs[3]:
+        st.markdown("#### Sept points de contrôle préventif")
+        project_map = t6_project_choices()
+        if not project_map:
+            st.info("Enregistrez un projet avant d'ouvrir un contrôle préventif.")
+        else:
+            with st.form("t6_gate_form", clear_on_submit=True):
+                proj_label = st.selectbox("Projet", list(project_map), key="t6_gate_project")
+                gate_code_selected = st.selectbox(
+                    "Point de contrôle",
+                    [x[0] for x in T6_ETAPES],
+                    format_func=lambda code: f"{code} – {next(x[1] for x in T6_ETAPES if x[0] == code)}"
+                )
+                gate = next(x for x in T6_ETAPES if x[0] == gate_code_selected)
+                dcol1,dcol2 = st.columns(2)
+                control_date = dcol1.date_input("Date du contrôle")
+                checker = dcol2.text_input("Vérificateur")
+                conclusion = st.selectbox("Conclusion", T6_STATUTS_CONCLUSION)
+                gate_obs = st.text_area("Observations, réserves et références de pièces")
+                if st.form_submit_button("Enregistrer le contrôle"):
+                    execute("""INSERT INTO t6_gate_checks(code_projet,gate_code,date_controle,verificateur,
+                        conclusion,observations,date_creation) VALUES(?,?,?,?,?,?,?)""",
+                        (project_map[proj_label],gate[0],control_date.isoformat(),checker,conclusion,
+                         gate_obs,datetime.now().isoformat(timespec="seconds")))
+                    log_action("Création","Tome VI – contrôle préventif",f"{project_map[proj_label]} · {gate[0]}")
+                    st.success("Contrôle préventif enregistré.")
+                    st.rerun()
+        gates = t6_df("SELECT * FROM t6_gate_checks ORDER BY id DESC")
+        if not gates.empty: st.dataframe(gates,use_container_width=True,hide_index=True)
+        gate_ref_df = pd.DataFrame(T6_ETAPES,columns=["Code","Étape du projet","Moment du contrôle","Objectif","Documents et preuves attendus","Résultat attendu"])
+        st.dataframe(gate_ref_df,use_container_width=True,hide_index=True)
+
+    with tabs[4]:
+        st.markdown("#### Référentiels professionnels et internationaux")
+        refs_df = pd.DataFrame(T6_REFERENTIELS)
+        search = st.text_input("Rechercher un référentiel, organisme ou domaine", key="t6_ref_search")
+        if search:
+            mask = refs_df.astype(str).apply(lambda col: col.str.contains(search,case=False,na=False)).any(axis=1)
+            refs_df = refs_df[mask]
+        st.dataframe(refs_df,use_container_width=True,hide_index=True)
+        st.markdown("#### Correspondance référentiels / étapes G01-G07")
+        mapping_df = t6_mapping_df()
+        st.dataframe(mapping_df,use_container_width=True,hide_index=True)
+        st.markdown("#### Sources officielles")
+        st.dataframe(pd.DataFrame(T6_SOURCES_OFFICIELLES,columns=["Code","Organisme","Adresse officielle"]),
+                     use_container_width=True,hide_index=True)
+        st.caption("Les intitulés, éditions, versions, dates d'entrée en vigueur et liens doivent être contrôlés sur les sites officiels avant utilisation.")
+
+    with tabs[5]:
+        st.markdown("#### Registre des éléments probants")
+        project_map = t6_project_choices()
+        if project_map:
+            with st.form("t6_evidence_form", clear_on_submit=True):
+                proj = st.selectbox("Projet",list(project_map),key="t6_ev_project")
+                c1,c2,c3 = st.columns(3)
+                evid_id = c1.text_input("ID preuve")
+                article = c2.selectbox("Article",[""]+[str(i) for i in range(1,51)])
+                gate_code = c3.selectbox("Point de contrôle",[""]+[x[0] for x in T6_ETAPES])
+                nature = st.selectbox("Nature de la preuve",["Document","Observation physique","Entretien","Photographie","Test technique","Donnée administrative","Autre"])
+                description = st.text_area("Description de la preuve")
+                source = st.text_input("Source / emplacement")
+                c1,c2,c3 = st.columns(3)
+                collected = c1.date_input("Date de collecte")
+                collector = c2.text_input("Collecté par")
+                reliability = c3.selectbox("Fiabilité",["Faible","Moyenne","Élevée"])
+                validation = st.selectbox("Statut de validation",["À valider","Validée","Rejetée","À compléter"])
+                ev_obs = st.text_area("Observations")
+                if st.form_submit_button("Enregistrer la preuve"):
+                    execute("""INSERT INTO t6_evidence(id_preuve,code_projet,article,point_controle,nature,
+                        description,source_emplacement,date_collecte,collecteur,fiabilite,statut_validation,observations,date_creation)
+                        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                        (evid_id or f"PREUVE-{datetime.now():%Y%m%d%H%M%S}",project_map[proj],article,gate_code,nature,
+                         description,source,collected.isoformat(),collector,reliability,validation,ev_obs,
+                         datetime.now().isoformat(timespec="seconds")))
+                    log_action("Création","Tome VI – preuve",project_map[proj])
+                    st.success("Preuve enregistrée."); st.rerun()
+        else: st.info("Enregistrez un projet avant de collecter des preuves.")
+        evidence = t6_df("SELECT * FROM t6_evidence ORDER BY id DESC")
+        if not evidence.empty: st.dataframe(evidence,use_container_width=True,hide_index=True)
+
+    with tabs[6]:
+        st.markdown("#### Registre des risques")
+        project_map = t6_project_choices()
+        if project_map:
+            with st.form("t6_risk_form", clear_on_submit=True):
+                proj = st.selectbox("Projet",list(project_map),key="t6_risk_project")
+                c1,c2,c3 = st.columns(3)
+                risk_id = c1.text_input("ID risque")
+                article = c2.selectbox("Article",[""]+[str(i) for i in range(1,51)],key="t6_risk_article")
+                gate_code = c3.selectbox("Point de contrôle",[""]+[x[0] for x in T6_ETAPES],key="t6_risk_gate")
+                risk_name = st.text_area("Risque identifié")
+                cause = st.text_area("Cause")
+                consequence = st.text_area("Conséquence potentielle")
+                c1,c2 = st.columns(2)
+                probability = c1.select_slider("Probabilité",options=[1,2,3,4,5],value=3)
+                impact = c2.select_slider("Impact",options=[1,2,3,4,5],value=3)
+                score = probability*impact
+                st.metric("Criticité calculée",f"{score}/25",t6_risk_level(score))
+                mitigation = st.text_area("Mesure de maîtrise")
+                c1,c2,c3 = st.columns(3)
+                owner = c1.text_input("Responsable")
+                due = c2.date_input("Échéance")
+                status = c3.selectbox("Statut",["Ouvert","En traitement","Maîtrisé","Accepté","Clos"])
+                if st.form_submit_button("Enregistrer le risque"):
+                    execute("""INSERT INTO t6_risks(id_risque,code_projet,article,point_controle,risque,cause,
+                        consequence,probabilite,impact,criticite,niveau,mesure_maitrise,responsable,echeance,statut,date_creation)
+                        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                        (risk_id or f"RISQUE-{datetime.now():%Y%m%d%H%M%S}",project_map[proj],article,gate_code,
+                         risk_name,cause,consequence,probability,impact,score,t6_risk_level(score),mitigation,
+                         owner,due.isoformat(),status,datetime.now().isoformat(timespec="seconds")))
+                    log_action("Création","Tome VI – risque",project_map[proj])
+                    st.success("Risque enregistré."); st.rerun()
+        else: st.info("Enregistrez un projet avant d'identifier les risques.")
+        risks = t6_df("SELECT * FROM t6_risks ORDER BY criticite DESC,id DESC")
+        if not risks.empty: st.dataframe(risks,use_container_width=True,hide_index=True)
+
+    with tabs[7]:
+        st.markdown("#### Registre des anomalies et constats")
+        project_map = t6_project_choices()
+        if project_map:
+            with st.form("t6_anomaly_form", clear_on_submit=True):
+                proj = st.selectbox("Projet",list(project_map),key="t6_anom_project")
+                c1,c2,c3 = st.columns(3)
+                anom_id = c1.text_input("ID anomalie")
+                article = c2.selectbox("Article",[""]+[str(i) for i in range(1,51)],key="t6_anom_article")
+                gate_code = c3.selectbox("Point de contrôle",[""]+[x[0] for x in T6_ETAPES],key="t6_anom_gate")
+                finding = st.text_area("Constat")
+                criterion = st.text_area("Critère / exigence")
+                cause = st.text_area("Cause")
+                consequence = st.text_area("Conséquence")
+                c1,c2,c3 = st.columns(3)
+                level = c1.selectbox("Niveau",["Faible","Modéré","Élevé","Critique"])
+                proof = c2.text_input("Preuve associée")
+                owner = c3.text_input("Responsable")
+                due = st.date_input("Échéance")
+                status = st.selectbox("Statut",["Ouverte","En analyse","Contestée","Corrigée","Clôturée"])
+                obs = st.text_area("Observation")
+                if st.form_submit_button("Enregistrer l'anomalie"):
+                    execute("""INSERT INTO t6_anomalies(id_anomalie,code_projet,article,point_controle, constat,
+                        critere,cause,consequence,niveau,preuve_associee,responsable,echeance,statut,observation,date_creation)
+                        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                        (anom_id or f"ANOM-{datetime.now():%Y%m%d%H%M%S}",project_map[proj],article,gate_code,
+                         finding,criterion,cause,consequence,level,proof,owner,due.isoformat(),status,obs,
+                         datetime.now().isoformat(timespec="seconds")))
+                    log_action("Création","Tome VI – anomalie",project_map[proj])
+                    st.success("Anomalie enregistrée."); st.rerun()
+        else: st.info("Enregistrez un projet avant de documenter une anomalie.")
+        anomalies = t6_df("SELECT * FROM t6_anomalies ORDER BY id DESC")
+        if not anomalies.empty: st.dataframe(anomalies,use_container_width=True,hide_index=True)
+        st.caption("Distinguer l'insuffisance documentaire, le risque potentiel et la non-conformité établie.")
+
+    with tabs[8]:
+        st.markdown("#### Suivi des recommandations")
+        project_map = t6_project_choices()
+        if project_map:
+            with st.form("t6_recommendation_form", clear_on_submit=True):
+                proj = st.selectbox("Projet",list(project_map),key="t6_rec_project")
+                c1,c2,c3 = st.columns(3)
+                rec_id = c1.text_input("ID recommandation")
+                article = c2.selectbox("Article",[""]+[str(i) for i in range(1,51)],key="t6_rec_article")
+                anomaly = c3.text_input("Anomalie associée")
+                recommendation = st.text_area("Recommandation")
+                c1,c2 = st.columns(2)
+                owner = c1.text_input("Responsable")
+                due = c2.date_input("Échéance")
+                indicator = st.text_input("Indicateur de réalisation")
+                status = st.selectbox("Statut",T6_STATUTS_SUIVI)
+                proof = st.text_input("Preuve de clôture")
+                validation = st.text_input("Validation du vérificateur")
+                if st.form_submit_button("Enregistrer la recommandation"):
+                    execute("""INSERT INTO t6_recommendations(id_recommandation,code_projet,article,anomalie_associee,
+                        recommandation,responsable,echeance,indicateur_realisation,statut,preuve_cloture,
+                        validation_verificateur,date_creation) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+                        (rec_id or f"REC-{datetime.now():%Y%m%d%H%M%S}",project_map[proj],article,anomaly,
+                         recommendation,owner,due.isoformat(),indicator,status,proof,validation,
+                         datetime.now().isoformat(timespec="seconds")))
+                    log_action("Création","Tome VI – recommandation",project_map[proj])
+                    st.success("Recommandation enregistrée."); st.rerun()
+        else: st.info("Enregistrez un projet avant de créer des recommandations.")
+        recommendations = t6_df("SELECT * FROM t6_recommendations ORDER BY id DESC")
+        if not recommendations.empty: st.dataframe(recommendations,use_container_width=True,hide_index=True)
+
+    with tabs[9]:
+        st.markdown("#### Exports consolidés du Tome VI")
+        st.write("Le classeur rassemble les projets, les 50 articles, les contrôles, le plan de vérification, les référentiels, les preuves, les risques, les anomalies et les recommandations.")
+        try:
+            excel_bytes = t6_export_workbook()
+            st.download_button("Télécharger le classeur Excel complet du Tome VI",
+                excel_bytes,"TOME_VI_IP15_VERIFICATION_PREVENTIVE.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",type="primary")
+        except Exception as exc:
+            st.error(f"Erreur lors de la préparation du classeur Excel : {exc}")
+        try:
+            csv_bytes = t6_export_csv_zip()
+            st.download_button("Télécharger tous les registres CSV (.zip)",csv_bytes,
+                "TOME_VI_IP15_EXPORTS_CSV.zip","application/zip")
+            png_bytes = t6_export_png_zip()
+            st.download_button("Télécharger les quatre graphiques PNG haute résolution (.zip)",png_bytes,
+                "TOME_VI_IP15_GRAPHIQUES_PNG.zip","application/zip")
+        except Exception as exc:
+            st.error(f"Erreur lors de la préparation des CSV : {exc}")
+        st.markdown("#### Exports unitaires")
+        for title, query, filename in [
+            ("Projets","SELECT * FROM t6_projects","tome6_projets.csv"),
+            ("Revues articles","SELECT * FROM t6_article_reviews","tome6_revues_articles.csv"),
+            ("Contrôles préventifs","SELECT * FROM t6_gate_checks","tome6_controles_preventifs.csv"),
+            ("Preuves","SELECT * FROM t6_evidence","tome6_preuves.csv"),
+            ("Risques","SELECT * FROM t6_risks","tome6_risques.csv"),
+            ("Anomalies","SELECT * FROM t6_anomalies","tome6_anomalies.csv"),
+            ("Recommandations","SELECT * FROM t6_recommendations","tome6_recommandations.csv")
+        ]:
+            frame = t6_df(query)
+            csv_download(frame,filename,f"Exporter : {title}")
+        st.caption("Les exports ne constituent pas une certification de conformité. Les données restent dans la base SQLite locale de l'application.")
+
+# Extension du menu sans supprimer les modules des Tomes I à V.
+if T6_PAGE not in PAGES:
+    PAGES.append(T6_PAGE)
+
+# Affichage du module Tome VI.
+if page == T6_PAGE:
+    t6_render_page()
+
 
 # =============================================================================
 # 20. PIED DE PAGE
