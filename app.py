@@ -21,6 +21,9 @@ import re
 import json
 import sqlite3
 import hashlib
+import math
+import unicodedata
+from difflib import SequenceMatcher
 from pathlib import Path
 from datetime import datetime, date
 from typing import Any
@@ -350,6 +353,134 @@ def risk_label(score):
     if score >= 25: return "Modéré"
     return "Faible"
 
+
+def normalize_text(value: Any) -> str:
+    """Normalisation robuste pour la recherche en français."""
+    value = "" if value is None else str(value)
+    value = unicodedata.normalize("NFKD", value.lower())
+    value = "".join(ch for ch in value if not unicodedata.combining(ch))
+    return re.sub(r"[^a-z0-9]+", " ", value).strip()
+
+
+def smart_indicator_search(question: str, limit: int = 12) -> pd.DataFrame:
+    """Classe les indicateurs par proximité lexicale et contextuelle, sans inventer de critères."""
+    q = normalize_text(question)
+    tokens = {x for x in q.split() if len(x) > 2}
+    rows = []
+    for item in INDICATORS:
+        corpus = normalize_text(
+            f"{item['Code']} {item['Domaine']} {item['Indicateur']} article {item['Article']}"
+        )
+        corpus_tokens = set(corpus.split())
+        overlap = len(tokens & corpus_tokens) / max(1, len(tokens))
+        phrase = SequenceMatcher(None, q, corpus).ratio() if q else 0
+        article_bonus = 0.15 if f"article {item['Article']}" in q else 0
+        score = min(1.0, 0.72 * overlap + 0.20 * phrase + article_bonus)
+        if score > 0:
+            rows.append({**item, "Pertinence (%)": round(score * 100, 1)})
+    if not rows:
+        return pd.DataFrame(columns=list(INDICATOR_DF.columns) + ["Pertinence (%)"])
+    return pd.DataFrame(rows).sort_values(
+        ["Pertinence (%)", "Article"], ascending=[False, True]
+    ).head(limit)
+
+
+def build_ip15_diagnostics():
+    """Moteur de règles explicables : signaux de risque et de qualité des dossiers."""
+    evals = qdf("SELECT * FROM evaluations ORDER BY id DESC")
+    recs = qdf("SELECT * FROM recommendations ORDER BY id DESC")
+    missions = get_missions()
+    matrices = qdf("SELECT * FROM matrix_rows ORDER BY id DESC")
+    today = date.today()
+
+    if evals.empty:
+        risk = pd.DataFrame(columns=[
+            "Organisme", "Code indicateur", "Évaluations", "Score moyen",
+            "Risque résiduel (%)", "Signal", "Qualité documentaire"
+        ])
+    else:
+        work = evals.copy()
+        work["score"] = pd.to_numeric(work["score"], errors="coerce")
+        status_risk = {
+            "Non conforme": 100, "Partiellement conforme": 65,
+            "Information insuffisante": 75, "Non évalué": 60,
+            "Conforme": 10, "Non applicable (à justifier)": 35
+        }
+        work["risque_statut"] = work["statut"].map(status_risk).fillna(50)
+        work["risque_score"] = 100 - work["score"].fillna(50).clip(0, 100)
+        work["risque_residuel"] = (
+            0.60 * work["risque_statut"] + 0.40 * work["risque_score"]
+        ).clip(0, 100)
+        work["preuve_absente"] = work["preuve"].fillna("").astype(str).str.strip().eq("")
+        work["constat_absent"] = work["constat"].fillna("").astype(str).str.strip().eq("")
+        risk = work.groupby(
+            ["organisme", "code_indicateur"], dropna=False
+        ).agg(
+            **{
+                "Évaluations": ("id", "count"),
+                "Score moyen": ("score", "mean"),
+                "Risque résiduel (%)": ("risque_residuel", "mean"),
+                "Preuves manquantes": ("preuve_absente", "sum"),
+                "Constats manquants": ("constat_absent", "sum"),
+                "Statuts observés": ("statut", lambda x: ", ".join(sorted(set(x.dropna().astype(str)))))
+            }
+        ).reset_index().rename(columns={
+            "organisme": "Organisme", "code_indicateur": "Code indicateur"
+        })
+        risk["Score moyen"] = risk["Score moyen"].round(1)
+        risk["Risque résiduel (%)"] = risk["Risque résiduel (%)"].round(1)
+        risk["Signal"] = risk["Risque résiduel (%)"].apply(
+            lambda x: "Critique" if x >= 80 else "Élevé" if x >= 65
+            else "Modéré" if x >= 40 else "Faible"
+        )
+        risk["Qualité documentaire"] = np.where(
+            (risk["Preuves manquantes"] > 0) | (risk["Constats manquants"] > 0),
+            "À renforcer", "Pièces référencées"
+        )
+        risk = risk.sort_values("Risque résiduel (%)", ascending=False)
+
+    if recs.empty:
+        overdue = recs.copy()
+    else:
+        recs["echeance_dt"] = pd.to_datetime(recs["echeance"], errors="coerce")
+        recs["retard_jours"] = (pd.Timestamp(today) - recs["echeance_dt"]).dt.days
+        overdue = recs[
+            (recs["echeance_dt"].notna()) &
+            (recs["retard_jours"] > 0) &
+            (recs["statut"].fillna("") != "Clôturée")
+        ].copy()
+
+    quality = []
+    if not evals.empty:
+        quality.append({
+            "Contrôle": "Évaluations sans preuve référencée",
+            "Volume": int(evals["preuve"].fillna("").astype(str).str.strip().eq("").sum()),
+            "Interprétation": "Références de pièces à compléter ou à justifier"
+        })
+        quality.append({
+            "Contrôle": "Évaluations sans constat factuel",
+            "Volume": int(evals["constat"].fillna("").astype(str).str.strip().eq("").sum()),
+            "Interprétation": "Constat à documenter avant conclusion"
+        })
+        quality.append({
+            "Contrôle": "Évaluations sans réponse contradictoire/commentaire",
+            "Volume": int(evals["commentaire"].fillna("").astype(str).str.strip().eq("").sum()),
+            "Interprétation": "Vérifier si la contradiction est prévue ou applicable"
+        })
+    if not matrices.empty:
+        quality.append({
+            "Contrôle": "Matrices encore à documenter / arbitrer",
+            "Volume": int(matrices["statut"].fillna("").astype(str).str.lower().isin(
+                ["à documenter", "à arbitrer", "à préparer", "à déterminer"]
+            ).sum()),
+            "Interprétation": "Compléter les critères, justifications ou arbitrages"
+        })
+    quality_df = pd.DataFrame(quality, columns=["Contrôle", "Volume", "Interprétation"])
+    return {
+        "missions": missions, "evaluations": evals, "recommendations": recs,
+        "risk": risk, "overdue": overdue, "quality": quality_df
+    }
+
 def safe_filename(name: str):
     stem = re.sub(r"[^A-Za-z0-9._-]+", "_", Path(name).name)
     return stem[:120] or "document"
@@ -373,7 +504,8 @@ PAGES = [
     "Suivi des recommandations",
     "Rapports & exports",
     "Paramètres & journal",
-    "TOME VI – Vérification préventive des grands projets"
+    "TOME VI – Vérification préventive des grands projets",
+    "Centre d’intelligence & aide à la décision"
 ]
 
 with st.sidebar:
@@ -389,7 +521,7 @@ with st.sidebar:
     st.caption("Référence juridique")
     st.markdown(f"**{LEGAL_REFERENCE}**")
     st.caption("50 indicateurs · 7 chapitres · 5 tomes")
-    st.caption("Version fonctionnelle initiale")
+    st.caption("Version enrichie · intelligence explicable")
 
 # =============================================================================
 # 6. PAGE 1 – ACCUEIL & TABLEAU DE BORD
@@ -668,14 +800,13 @@ elif page == PAGES[5]:
         if not question.strip():
             st.error("Saisissez une question.")
         else:
-            terms = [t.lower() for t in re.findall(r"\w+", question) if len(t) > 3]
-            scored = []
-            for item in INDICATORS:
-                text = (item["Indicateur"] + " " + item["Domaine"] + f" article {item['Article']}").lower()
-                score = sum(1 for t in terms if t in text)
-                if score: scored.append((score, item))
-            relevant = [x[1] for x in sorted(scored, key=lambda z: z[0], reverse=True)[:12]]
-            context = "\n".join([f"{x['Code']} – Art. {x['Article']} – {x['Indicateur']}" for x in relevant])
+            relevant_df = smart_indicator_search(question, limit=12)
+            relevant = relevant_df.to_dict("records")
+            context = "\n".join([
+                f"{x['Code']} – Art. {x['Article']} – {x['Indicateur']} "
+                f"(rapprochement textuel indicatif : {x['Pertinence (%)']}%)"
+                for x in relevant
+            ])
             if api_key:
                 try:
                     from openai import OpenAI
@@ -2221,7 +2352,161 @@ if page == T6_PAGE:
 
 
 # =============================================================================
-# 20. PIED DE PAGE
+# 20. CENTRE D'INTELLIGENCE – DIAGNOSTIC EXPLICABLE ET AIDE À LA DÉCISION
+# =============================================================================
+
+if page == "Centre d’intelligence & aide à la décision":
+    page_header(
+        "Centre d'intelligence & aide à la décision",
+        "Consolidation des données IP15, détection de signaux faibles et priorisation explicable des travaux."
+    )
+    st.warning(
+        "Les scores ci-dessous sont des signaux de priorisation fondés sur les données saisies. "
+        "Ils ne constituent ni une preuve juridique, ni une conclusion d'audit, ni une décision automatique."
+    )
+    diag = build_ip15_diagnostics()
+    risk = diag["risk"]
+    overdue = diag["overdue"]
+    quality = diag["quality"]
+    evals = diag["evaluations"]
+    recs = diag["recommendations"]
+    missions = diag["missions"]
+
+    metric_row([
+        ("Missions", len(missions), "Missions enregistrées dans la base locale"),
+        ("Évaluations", len(evals), "Évaluations de terrain enregistrées"),
+        ("Signaux de risque", len(risk), "Couples organisme-indicateur analysés"),
+        ("Recommandations en retard", len(overdue), "Échéance dépassée et statut non clôturé"),
+        ("Indicateurs documentés", evals["code_indicateur"].nunique() if not evals.empty else 0,
+         "Sur 50 indicateurs du référentiel")
+    ])
+
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "Priorisation des risques", "Qualité & cohérence", "Recommandations", "Assistant de cadrage"
+    ])
+    with tab1:
+        st.markdown("### Classement explicable des risques résiduels")
+        if risk.empty:
+            st.info("Aucune évaluation disponible. Enregistrez des travaux de terrain pour activer cette analyse.")
+        else:
+            if PLOTLY_OK:
+                fig = px.bar(
+                    risk.head(25), x="Risque résiduel (%)", y="Organisme",
+                    color="Signal", hover_data=["Code indicateur", "Évaluations", "Score moyen",
+                                               "Qualité documentaire"],
+                    orientation="h", title="25 signaux de risque les plus élevés"
+                )
+                fig.update_layout(height=max(420, 28 * min(25, len(risk))),
+                                  plot_bgcolor="white", paper_bgcolor="white",
+                                  yaxis={"categoryorder": "total ascending"})
+                st.plotly_chart(fig, use_container_width=True)
+            st.dataframe(risk, use_container_width=True, hide_index=True)
+            csv_download(risk, "ip15_priorisation_risques_explicable.csv", "Exporter la priorisation")
+            with st.expander("Comprendre la méthode de calcul"):
+                st.markdown(
+                    "- **60 % :** appréciation associée au statut provisoire (non conforme, partiellement conforme, etc.).\n"
+                    "- **40 % :** complément du score interne de maturité (100 moins le score saisi).\n"
+                    "- Les évaluations sont agrégées par organisme et indicateur.\n"
+                    "- Les dossiers sans preuve ou sans constat sont signalés séparément.\n"
+                    "- Les pondérations sont des paramètres heuristiques de travail, à valider par l'équipe."
+                )
+    with tab2:
+        st.markdown("### Contrôles de qualité documentaire")
+        if quality.empty:
+            st.info("Les contrôles seront activés après les premières évaluations ou saisies dans les matrices.")
+        else:
+            st.dataframe(quality, use_container_width=True, hide_index=True)
+            st.caption("Un champ vide est une demande de revue documentaire, pas automatiquement une irrégularité.")
+        if not evals.empty:
+            st.markdown("### Cohérence entre statut, score et preuve")
+            coherence = evals.copy()
+            coherence["score"] = pd.to_numeric(coherence["score"], errors="coerce")
+            coherence["Alerte statut/score"] = np.select(
+                [
+                    (coherence["statut"] == "Conforme") & (coherence["score"] < 40),
+                    (coherence["statut"] == "Non conforme") & (coherence["score"] > 70),
+                    coherence["score"].isna()
+                ],
+                [
+                    "Conforme avec score faible : vérifier la justification",
+                    "Non conforme avec score élevé : vérifier la cohérence",
+                    "Score manquant ou invalide"
+                ], default=""
+            )
+            flagged = coherence[coherence["Alerte statut/score"] != ""]
+            st.metric("Situations à revoir", len(flagged))
+            if not flagged.empty:
+                st.dataframe(flagged[[
+                    "id", "organisme", "code_indicateur", "statut", "score",
+                    "preuve", "Alerte statut/score"
+                ]], use_container_width=True, hide_index=True)
+                csv_download(flagged, "ip15_alertes_coherence.csv", "Exporter les alertes")
+    with tab3:
+        st.markdown("### Suivi des échéances et recommandations")
+        if recs.empty:
+            st.info("Aucune recommandation enregistrée.")
+        else:
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Total", len(recs))
+            c2.metric("En retard", len(overdue))
+            c3.metric("Clôturées", int((recs["statut"] == "Clôturée").sum()))
+            if not overdue.empty:
+                st.error("Des recommandations ont dépassé leur échéance.")
+                st.dataframe(overdue.drop(columns=["echeance_dt"], errors="ignore"),
+                             use_container_width=True, hide_index=True)
+                csv_download(overdue, "ip15_recommandations_en_retard.csv", "Exporter les retards")
+            else:
+                st.success("Aucun retard détecté sur les échéances renseignées.")
+            st.dataframe(recs, use_container_width=True, hide_index=True)
+    with tab4:
+        st.markdown("### Générateur de pistes de vérification")
+        query = st.text_area(
+            "Décrivez le sujet, l'organisme ou la difficulté à examiner",
+            placeholder="Ex. : accessibilité des bâtiments administratifs et conformité des aménagements"
+        )
+        if st.button("Identifier les indicateurs et proposer un cadrage", type="primary",
+                     key="smart_center_search"):
+            matches = smart_indicator_search(query, limit=15)
+            if matches.empty:
+                st.info("Aucun rapprochement suffisamment pertinent. Reformulez avec des termes liés au sujet.")
+            else:
+                st.markdown("#### Indicateurs rapprochés")
+                st.dataframe(matches, use_container_width=True, hide_index=True)
+                st.markdown("#### Pistes de travail à adapter")
+                st.markdown(
+                    "1. Confirmer l'applicabilité de chaque article au regard du mandat et de l'entité.\n"
+                    "2. Obtenir le texte officiel applicable, les textes d'application et les procédures internes.\n"
+                    "3. Définir une population, une période et une méthode d'échantillonnage documentées.\n"
+                    "4. Collecter les pièces, observations physiques et entretiens contradictoires.\n"
+                    "5. Distinguer les faits établis, les limites de preuve, les risques et les recommandations."
+                )
+                st.caption("Le pourcentage de pertinence est un score de rapprochement textuel, pas une probabilité juridique.")
+
+    st.markdown("---")
+    st.markdown("### Synthèse des points d'attention générés")
+    attention = []
+    if risk.empty:
+        attention.append("Données de terrain insuffisantes pour établir une priorisation.")
+    else:
+        critical = int(risk["Signal"].isin(["Critique", "Élevé"]).sum())
+        attention.append(f"{critical} couple(s) organisme-indicateur classé(s) en signal élevé ou critique.")
+    if len(overdue):
+        attention.append(f"{len(overdue)} recommandation(s) avec échéance dépassée nécessitent une revue.")
+    if quality.empty:
+        attention.append("Qualité documentaire non évaluable à ce stade.")
+    else:
+        total_flags = int(quality["Volume"].sum())
+        attention.append(f"{total_flags} signal(aux) de qualité documentaire à examiner.")
+    for item in attention:
+        st.markdown(f"- {item}")
+    st.caption(
+        "Moteur IP15 : règles déterministes et recherche textuelle locale. "
+        "Aucune donnée externe ni conclusion juridique n'est ajoutée automatiquement."
+    )
+
+
+# =============================================================================
+# 21. PIED DE PAGE
 # =============================================================================
 
 st.markdown("---")
