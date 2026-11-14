@@ -2,7 +2,7 @@
 """
 INCLUSION PROFESSIONNELLE 15
 Écosystème numérique intégré de vérification de l'application de la loi n° 2010-15
-Application Streamlit – version initiale opérationnelle et extensible.
+Application Streamlit – version enrichie avec moteur d'intelligence analytique explicable.
 
 Installation :
     pip install streamlit pandas numpy plotly scikit-learn openpyxl matplotlib
@@ -21,6 +21,9 @@ import re
 import json
 import sqlite3
 import hashlib
+import unicodedata
+import math
+from collections import Counter
 from pathlib import Path
 from datetime import datetime, date
 from typing import Any
@@ -277,6 +280,16 @@ def init_db():
         """)
 init_db()
 
+# Index SQLite non destructifs : accélèrent les consultations sans modifier les données.
+with db() as _con:
+    _con.executescript("""
+    CREATE INDEX IF NOT EXISTS idx_eval_code ON evaluations(code_indicateur);
+    CREATE INDEX IF NOT EXISTS idx_eval_mission ON evaluations(mission_id);
+    CREATE INDEX IF NOT EXISTS idx_recommendations_status ON recommendations(statut);
+    CREATE INDEX IF NOT EXISTS idx_matrix_category_code ON matrix_rows(categorie, code);
+    CREATE INDEX IF NOT EXISTS idx_legal_docs_family ON legal_docs(famille);
+    """)
+
 def log_action(action: str, objet: str, detail: str = ""):
     with db() as con:
         con.execute(
@@ -350,6 +363,189 @@ def risk_label(score):
     if score >= 25: return "Modéré"
     return "Faible"
 
+
+# =============================================================================
+# 4 BIS. MOTEUR D'INTELLIGENCE IP15 – ANALYSE LOCALE ET EXPLICABLE
+# =============================================================================
+
+def normalize_text(value: Any) -> str:
+    """Normalise un texte pour améliorer la recherche sans modifier les données sources."""
+    if value is None or (isinstance(value, float) and math.isnan(value)):
+        return ""
+    text = str(value).lower().strip()
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    return re.sub(r"[^a-z0-9]+", " ", text).strip()
+
+
+def rank_indicators(question: str, limit: int = 12) -> list[dict]:
+    """
+    Classe les indicateurs par pertinence.
+    TF-IDF/cosinus est utilisé si scikit-learn est disponible ; sinon,
+    un score lexical pondéré et transparent est appliqué.
+    """
+    query = normalize_text(question)
+    if not query:
+        return []
+
+    corpus = []
+    for item in INDICATORS:
+        corpus.append(
+            f"{item['Code']} article {item['Article']} {item['Domaine']} "
+            f"{item['Indicateur']}"
+        )
+
+    ranked = []
+    try:
+        from sklearn.feature_extraction.text import TfidfVectorizer
+        from sklearn.metrics.pairwise import cosine_similarity
+        vectorizer = TfidfVectorizer(ngram_range=(1, 2), sublinear_tf=True)
+        matrix = vectorizer.fit_transform(corpus + [query])
+        similarities = cosine_similarity(matrix[-1], matrix[:-1]).ravel()
+        for idx, score in enumerate(similarities):
+            if score > 0:
+                row = dict(INDICATORS[idx])
+                row["Pertinence (%)"] = round(float(score) * 100, 1)
+                row["Méthode"] = "TF-IDF"
+                ranked.append(row)
+    except Exception:
+        terms = [t for t in query.split() if len(t) > 2]
+        for item, doc in zip(INDICATORS, corpus):
+            normalized_doc = normalize_text(doc)
+            doc_terms = set(normalized_doc.split())
+            overlap = sum(1 for term in terms if term in doc_terms)
+            if overlap:
+                phrase_bonus = 2 if query in normalized_doc else 0
+                score = (overlap + phrase_bonus) / max(len(set(terms)), 1)
+                row = dict(item)
+                row["Pertinence (%)"] = round(min(score, 1.0) * 100, 1)
+                row["Méthode"] = "Lexicale"
+                ranked.append(row)
+
+    ranked.sort(key=lambda x: (x["Pertinence (%)"], -x["Article"]), reverse=True)
+    return ranked[:max(1, int(limit))]
+
+
+def build_ip15_intelligence() -> dict:
+    """Construit un diagnostic à partir des seules données réellement enregistrées."""
+    missions = qdf("SELECT * FROM missions")
+    evaluations = qdf("SELECT * FROM evaluations")
+    recommendations = qdf("SELECT * FROM recommendations")
+    documents = qdf("SELECT * FROM legal_docs")
+    matrix = qdf("SELECT * FROM matrix_rows")
+    questionnaires = qdf("SELECT * FROM questionnaires")
+
+    total_eval = len(evaluations)
+    evidence_missing = 0
+    facts_missing = 0
+    if not evaluations.empty:
+        evidence_missing = int(
+            evaluations["preuve"].fillna("").astype(str).str.strip().eq("").sum()
+        )
+        facts_missing = int(
+            evaluations["constat"].fillna("").astype(str).str.strip().eq("").sum()
+        )
+
+    open_recs = 0
+    overdue_recs = 0
+    if not recommendations.empty:
+        statuses = recommendations["statut"].fillna("").astype(str)
+        open_recs = int((statuses != "Clôturée").sum())
+        if "echeance" in recommendations.columns:
+            deadlines = pd.to_datetime(recommendations["echeance"], errors="coerce")
+            today = pd.Timestamp(date.today())
+            overdue_recs = int(((deadlines < today) & (statuses != "Clôturée")).sum())
+
+    assessed_codes = (
+        set(evaluations["code_indicateur"].dropna().astype(str))
+        if not evaluations.empty else set()
+    )
+    unassessed = [x for x in INDICATORS if x["Code"] not in assessed_codes]
+
+    status_counts = {}
+    if not evaluations.empty and "statut" in evaluations.columns:
+        status_counts = evaluations["statut"].fillna("Non renseigné").value_counts().to_dict()
+
+    return {
+        "missions": len(missions),
+        "evaluations": total_eval,
+        "recommendations": len(recommendations),
+        "open_recommendations": open_recs,
+        "overdue_recommendations": overdue_recs,
+        "documents": len(documents),
+        "matrix_entries": len(matrix),
+        "questionnaires": len(questionnaires),
+        "assessed_codes": len(assessed_codes),
+        "unassessed": unassessed,
+        "missing_evidence": evidence_missing,
+        "missing_findings": facts_missing,
+        "status_counts": status_counts,
+    }
+
+
+def intelligent_alerts(diagnostic: dict) -> list[tuple[str, str, str]]:
+    """Retourne des alertes explicables ; aucun constat juridique n'est inféré."""
+    alerts = []
+    if diagnostic["missions"] == 0:
+        alerts.append(("Information", "Aucune mission n'est enregistrée.", "Créez une mission avant de saisir des évaluations opérationnelles."))
+    if diagnostic["evaluations"] == 0:
+        alerts.append(("Information", "Aucune évaluation de terrain n'est disponible.", "Le tableau de bord ne peut pas encore calculer la couverture réelle des contrôles."))
+    if diagnostic["missing_evidence"]:
+        alerts.append(("Vigilance", f"{diagnostic['missing_evidence']} évaluation(s) sans référence de preuve.", "Complétez les références documentaires ou indiquez explicitement les limites de preuve."))
+    if diagnostic["missing_findings"]:
+        alerts.append(("Vigilance", f"{diagnostic['missing_findings']} évaluation(s) sans constat factuel renseigné.", "Documentez les faits observés, la période, la source et les limites."))
+    if diagnostic["overdue_recommendations"]:
+        alerts.append(("Priorité", f"{diagnostic['overdue_recommendations']} recommandation(s) ouverte(s) avec échéance dépassée.", "Examiner le statut, demander les justificatifs et actualiser le suivi contradictoire."))
+    if diagnostic["unassessed"]:
+        alerts.append(("Couverture", f"{len(diagnostic['unassessed'])} indicateur(s) sans évaluation enregistrée.", "Planifier les contrôles selon l'applicabilité et le périmètre de la mission."))
+    if not alerts:
+        alerts.append(("Information", "Aucune alerte de complétude majeure détectée.", "Poursuivre les contrôles de fond et la validation professionnelle des constats."))
+    return alerts
+
+
+def build_local_assistant_answer(question: str, relevant: list[dict], diagnostic: dict) -> str:
+    """Réponse structurée hors API, sans prétendre établir une conclusion juridique."""
+    indicator_lines = "\n".join(
+        f"- {x['Code']} (article {x['Article']}) : {x['Indicateur']} "
+        f"(pertinence indicative : {x.get('Pertinence (%)', 0)} %)"
+        for x in relevant[:8]
+    ) or "- Aucun indicateur rapproché automatiquement."
+
+    return f"""Analyse méthodologique locale – IP15
+
+Question : {question}
+
+1. Cadrage
+- Définir l'organisme, les services concernés, la période, les populations bénéficiaires et le périmètre.
+- Identifier les obligations réellement applicables à l'entité et à la période examinée.
+- Distinguer conformité juridique, mise en œuvre opérationnelle et effets observés.
+
+2. Indicateurs rapprochés automatiquement
+{indicator_lines}
+
+3. Documents et données à demander
+- Textes officiels et actes internes applicables, décisions, procédures et délégations.
+- Budgets, engagements, dépenses, marchés, conventions et rapports de mise en œuvre.
+- Registres des bénéficiaires, statistiques désagrégées disponibles et justificatifs de prestations.
+- Réclamations, comptes rendus d'entretien, rapports de contrôle et plans d'action.
+
+4. Tests et procédures possibles
+- Vérifier l'existence, la date, l'autorité émettrice et le champ d'application des pièces.
+- Sélectionner un échantillon documenté et reproductible ; rapprocher décisions, registres et paiements.
+- Réaliser des entretiens contradictoires et des observations physiques lorsque cela est pertinent.
+- Comparer les objectifs, les réalisations, les délais et les résultats avec les critères validés.
+
+5. État des données IP15 enregistrées
+- Missions : {diagnostic['missions']}
+- Évaluations : {diagnostic['evaluations']}
+- Documents indexés : {diagnostic['documents']}
+- Recommandations ouvertes : {diagnostic['open_recommendations']}
+- Références de preuve manquantes dans les évaluations : {diagnostic['missing_evidence']}
+
+6. Limites et validation
+Cette analyse est une aide au travail. Les rapprochements automatiques ne démontrent ni une violation de la loi ni une discrimination. Les critères doivent être confirmés dans les textes officiels ; les constats doivent reposer sur des preuves suffisantes, pertinentes, fiables et contradictoires. L'appréciation finale relève du professionnel chargé de la mission.
+"""
+
 def safe_filename(name: str):
     stem = re.sub(r"[^A-Za-z0-9._-]+", "_", Path(name).name)
     return stem[:120] or "document"
@@ -389,7 +585,7 @@ with st.sidebar:
     st.caption("Référence juridique")
     st.markdown(f"**{LEGAL_REFERENCE}**")
     st.caption("50 indicateurs · 7 chapitres · 5 tomes")
-    st.caption("Version fonctionnelle initiale")
+    st.caption("Version enrichie – moteur d’intelligence analytique IP15")
 
 # =============================================================================
 # 6. PAGE 1 – ACCUEIL & TABLEAU DE BORD
@@ -438,6 +634,32 @@ if page == PAGES[0]:
     a.metric("Recommandations ouvertes", open_recs)
     b.metric("Recommandations clôturées", completed)
     c.metric("Documents juridiques indexés", len(docs))
+    # Couche d'intelligence : diagnostic calculé uniquement sur les données locales.
+    st.markdown("### Intelligence opérationnelle – diagnostic automatique")
+    diag = build_ip15_intelligence()
+    intel_cols = st.columns(4)
+    intel_cols[0].metric("Couverture des indicateurs", f"{diag['assessed_codes']}/50")
+    intel_cols[1].metric("Preuves à compléter", diag["missing_evidence"])
+    intel_cols[2].metric("Recommandations en retard", diag["overdue_recommendations"])
+    intel_cols[3].metric("Questionnaires", diag["questionnaires"])
+    alert_rows = intelligent_alerts(diag)
+    for level, heading, advice in alert_rows:
+        if level == "Priorité":
+            st.error(f"**{heading}** {advice}")
+        elif level == "Vigilance":
+            st.warning(f"**{heading}** {advice}")
+        else:
+            st.info(f"**{heading}** {advice}")
+    if diag["unassessed"]:
+        with st.expander("Indicateurs non encore évalués"):
+            st.dataframe(pd.DataFrame(diag["unassessed"])[["Code", "Article", "Domaine", "Indicateur"]],
+                         use_container_width=True, hide_index=True)
+    if diag["status_counts"]:
+        st.markdown("#### Répartition des évaluations enregistrées")
+        st.dataframe(pd.DataFrame(
+            [{"Statut": k, "Nombre": v} for k, v in diag["status_counts"].items()]
+        ), use_container_width=True, hide_index=True)
+
     st.markdown('<div class="ip15-note"><b>Garde-fou professionnel :</b> les indicateurs sont des axes de vérification. Une évaluation doit reposer sur des critères applicables, des pièces probantes, des entretiens et une appréciation contradictoire. Les scores et alertes ne constituent pas, à eux seuls, des preuves de non-conformité.</div>', unsafe_allow_html=True)
 
 # =============================================================================
@@ -668,14 +890,13 @@ elif page == PAGES[5]:
         if not question.strip():
             st.error("Saisissez une question.")
         else:
-            terms = [t.lower() for t in re.findall(r"\w+", question) if len(t) > 3]
-            scored = []
-            for item in INDICATORS:
-                text = (item["Indicateur"] + " " + item["Domaine"] + f" article {item['Article']}").lower()
-                score = sum(1 for t in terms if t in text)
-                if score: scored.append((score, item))
-            relevant = [x[1] for x in sorted(scored, key=lambda z: z[0], reverse=True)[:12]]
-            context = "\n".join([f"{x['Code']} – Art. {x['Article']} – {x['Indicateur']}" for x in relevant])
+            relevant = rank_indicators(question, limit=12)
+            context = "\n".join([
+                f"{x['Code']} – Art. {x['Article']} – {x['Indicateur']} "
+                f"(pertinence indicative : {x.get('Pertinence (%)', 0)} %)"
+                for x in relevant
+            ])
+            diagnostic = build_ip15_intelligence()
             if api_key:
                 try:
                     from openai import OpenAI
@@ -685,10 +906,18 @@ Référence du projet : {LEGAL_REFERENCE}. Réponds en français, avec prudence.
 N'invente aucun article, texte réglementaire, seuil, fait ou preuve. Distingue les pistes de contrôle
 des constats établis. L'inspecteur garde la responsabilité de l'analyse.
 Question : {question}
-Indicateurs du référentiel potentiellement pertinents :
-{context or 'Aucun indicateur identifié par recherche lexicale.'}
-Propose : (1) cadrage, (2) critères à vérifier à confirmer dans le texte officiel,
-(3) documents à demander, (4) tests/entretiens, (5) preuves attendues et limites."""
+Indicateurs du référentiel potentiellement pertinents (rapprochement automatique, non juridique) :
+{context or 'Aucun indicateur rapproché.'}
+Données actuellement enregistrées dans IP15 :
+- Missions : {diagnostic['missions']}
+- Évaluations : {diagnostic['evaluations']}
+- Documents indexés : {diagnostic['documents']}
+- Recommandations ouvertes : {diagnostic['open_recommendations']}
+- Évaluations sans référence de preuve : {diagnostic['missing_evidence']}
+Propose : (1) cadrage, (2) critères à confirmer dans le texte officiel,
+(3) documents à demander, (4) tests/entretiens, (5) preuves attendues,
+(6) risques de biais ou limites des données, (7) prochaines actions hiérarchisées.
+Distingue strictement les faits fournis, les hypothèses et les pistes de contrôle."""
                     response = client.chat.completions.create(
                         model=model_name, messages=[{"role": "user", "content": prompt}], temperature=0.2
                     )
@@ -696,21 +925,13 @@ Propose : (1) cadrage, (2) critères à vérifier à confirmer dans le texte off
                 except Exception as e:
                     answer = f"Mode IA indisponible ({e}). Résultat local présenté ci-dessous."
             else:
-                answer = (
-                    "Mode local sans génération IA.\n\n"
-                    "Démarche suggérée :\n"
-                    "1. Définir l'entité, la période, les bénéficiaires et le périmètre de vérification.\n"
-                    "2. Confirmer dans la version officielle de la loi et les textes d'application les obligations applicables.\n"
-                    "3. Demander les procédures, statistiques, budgets, décisions, registres et rapports pertinents.\n"
-                    "4. Réaliser des tests sur pièces, entretiens et observations, en recherchant des preuves traçables.\n"
-                    "5. Documenter les écarts, recueillir les explications contradictoires et formuler des recommandations mesurables.\n\n"
-                    "Cette réponse est une trame générale et non une analyse juridique automatisée."
-                )
+                answer = build_local_assistant_answer(question, relevant, diagnostic)
             st.markdown("### Réponse")
             st.write(answer)
             st.session_state["ip15_last_answer"] = answer
             if relevant:
-                st.markdown("### Indicateurs rapprochés par recherche lexicale")
+                st.markdown("### Indicateurs rapprochés par pertinence")
+                st.caption("Classement automatique indicatif (TF-IDF si disponible, sinon recherche lexicale). Il ne valide pas l'applicabilité juridique.")
                 st.dataframe(pd.DataFrame(relevant), use_container_width=True, hide_index=True)
             st.download_button("Télécharger la réponse TXT", answer.encode("utf-8"), "assistant_ip15.txt", "text/plain")
 
