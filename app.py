@@ -7,7 +7,7 @@ Application Streamlit – version enrichie avec moteur d'intelligence analytique
 Installation :
     pip install streamlit pandas numpy plotly scikit-learn openpyxl matplotlib
 Lancement :
-    streamlit run app_inclusion_professionnelle_15.py
+    streamlit run IP15_intelligente.py
 
 Dépendances facultatives :
     pip install openai pypdf python-docx
@@ -114,6 +114,66 @@ div.stButton > button[kind="primary"] {{ background: {C['navy']}; border-color: 
 .stProgress > div > div > div > div {{ background-color: {C['teal']}; }}
 [data-testid="stDataFrame"] {{ background: white; }}
 footer {{ visibility: hidden; }}
+</style>
+<style>
+/* THÈME CONTRASTÉ : textes blancs dans toutes les rubriques */
+:root {{ color-scheme: dark; }}
+html, body, .stApp, [data-testid="stAppViewContainer"],
+[data-testid="stMain"], [data-testid="stMainBlockContainer"] {{
+    background-color: #10243A !important;
+    color: #FFFFFF !important;
+}}
+.stApp, .stApp *:not(svg):not(path):not(img):not(canvas) {{
+    color: #FFFFFF !important;
+}}
+section[data-testid="stSidebar"],
+section[data-testid="stSidebar"] > div,
+[data-testid="stHeader"], [data-testid="stToolbar"] {{
+    background-color: #142F49 !important;
+}}
+.ip15-card, .ip15-note, [data-testid="stExpander"],
+[data-testid="stVerticalBlockBorderWrapper"],
+[data-testid="stMetric"], [data-testid="stAlert"],
+[data-testid="stForm"], [data-testid="stTabs"] [data-baseweb="tab-panel"] {{
+    background-color: #193B5A !important;
+    border-color: #42617B !important;
+}}
+.ip15-header {{ background: linear-gradient(105deg, #071827, #193B5A) !important; }}
+.ip15-header h1, .ip15-header p, .ip15-kicker {{ color: #FFFFFF !important; }}
+input, textarea, [data-baseweb="input"], [data-baseweb="textarea"],
+[data-baseweb="select"] > div, [data-testid="stDateInput"] input,
+[data-testid="stNumberInput"] input {{
+    background-color: #193B5A !important;
+    color: #FFFFFF !important;
+    border-color: #7891A6 !important;
+    -webkit-text-fill-color: #FFFFFF !important;
+}}
+input::placeholder, textarea::placeholder {{ color: #D7E2EC !important; opacity: 1 !important; }}
+[data-baseweb="popover"], [data-baseweb="menu"],
+[role="listbox"], [role="option"] {{
+    background-color: #193B5A !important;
+    color: #FFFFFF !important;
+}}
+button, [data-testid="stDownloadButton"] button,
+[data-testid="stFormSubmitButton"] button {{
+    color: #FFFFFF !important;
+    border-color: #7891A6 !important;
+}}
+[data-testid="stDataFrame"], [data-testid="stTable"] {{
+    background-color: #193B5A !important;
+    color: #FFFFFF !important;
+}}
+[data-testid="stDataFrame"] *, [data-testid="stTable"] * {{
+    color: #FFFFFF !important;
+}}
+[data-testid="stMetricValue"], [data-testid="stMetricLabel"] {{
+    color: #FFFFFF !important;
+}}
+[data-testid="stCaptionContainer"], small, .stCaption {{
+    color: #E2EAF1 !important;
+}}
+/* Les liens restent blancs et clairement identifiables. */
+a, a:visited {{ color: #FFFFFF !important; text-decoration: underline; }}
 </style>
 """, unsafe_allow_html=True)
 
